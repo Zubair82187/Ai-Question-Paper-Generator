@@ -2,6 +2,7 @@ package com.ai_question_paper_generator.service;
 
 import com.ai_question_paper_generator.dto.chapter_dto.ChapterDto;
 import com.ai_question_paper_generator.dto.chapter_dto.ChapterDtoBasic;
+import com.ai_question_paper_generator.dto.chapter_dto.ChapterDtoWithoutPath;
 import com.ai_question_paper_generator.exception.NotFoundException;
 import com.ai_question_paper_generator.mapper.ChapterMapper;
 import com.ai_question_paper_generator.model.Chapter;
@@ -11,7 +12,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -82,5 +82,9 @@ public class ChapterService {
     public Chapter findChapterById(long chapter_id){
         return chapterRepository.findById(chapter_id)
                 .orElseThrow(()-> new NotFoundException("There is no chapter with id: "+chapter_id));
+    }
+
+    public ChapterDtoBasic saveChapter(ChapterDtoWithoutPath chapterDtoWithoutPath) {
+        return chapterMapper.toChapterBasicDto(chapterRepository.save(chapterMapper.toChapter(chapterDtoWithoutPath)));
     }
 }

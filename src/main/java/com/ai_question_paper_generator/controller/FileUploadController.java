@@ -1,12 +1,13 @@
 package com.ai_question_paper_generator.controller;
 
 import com.ai_question_paper_generator.dto.book_dto.BookDtoBasic;
-import com.ai_question_paper_generator.dto.chapter_dto.ChapterDtoBasic;
 import com.ai_question_paper_generator.service.FileUploadService;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -22,14 +23,13 @@ public class FileUploadController {
 
     @PostMapping("/upload")
     public ResponseEntity<String> uploadPdf(@RequestParam MultipartFile pdf,
-                                            @RequestParam String subjectName, @RequestParam String bookName){
-        return ResponseEntity.status(HttpStatus.OK).body(service.saveFile(pdf, subjectName, bookName));
-
+                                            @RequestPart @Valid BookDtoBasic bookDtoBasic){
+        return ResponseEntity.status(HttpStatus.OK).body(service.saveFile(pdf, bookDtoBasic));
     }
 
     @PostMapping(value = "/upload/chapters", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<String> uploadChapters(@RequestPart("chapters") List<MultipartFile> chapters,
-                                                @RequestPart("book") BookDtoBasic book){
+                                                @RequestPart("book") @Validated BookDtoBasic book){
         return ResponseEntity.status(HttpStatus.OK).body(service.saveChapters(chapters, book));
     }
 

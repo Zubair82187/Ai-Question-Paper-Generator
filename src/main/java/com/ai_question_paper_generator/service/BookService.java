@@ -1,6 +1,7 @@
 package com.ai_question_paper_generator.service;
 
 import com.ai_question_paper_generator.dto.book_dto.BookDtoBasic;
+import com.ai_question_paper_generator.dto.book_dto.BookDtoWithId;
 import com.ai_question_paper_generator.dto.book_dto.BookDtoWithPath;
 import com.ai_question_paper_generator.exception.NotFoundException;
 import com.ai_question_paper_generator.mapper.BookMapper;
@@ -16,8 +17,8 @@ public class BookService {
     private final BookRepository bookRepository;
     private final BookMapper bookMapper;
 
-    public BookDtoBasic saveBook(BookDtoWithPath bookDtoWithPath){
-        return bookMapper.toBookDtoBasic(bookMapper.bookDtoWithPathToBook(bookDtoWithPath));
+    public BookDtoWithId saveBook(BookDtoWithPath bookDtoWithPath){
+        return bookMapper.toBookDtoWithId(bookRepository.save(bookMapper.bookDtoWithPathToBook(bookDtoWithPath)));
     }
 
     public BookDtoBasic findBookById(long book_id){

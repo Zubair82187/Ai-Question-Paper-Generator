@@ -1,6 +1,9 @@
 package com.ai_question_paper_generator.service;
 
 import com.ai_question_paper_generator.dto.book_dto.BookDtoBasic;
+import com.ai_question_paper_generator.dto.book_dto.BookDtoWithId;
+import com.ai_question_paper_generator.dto.chapter_dto.ChapterDtoBasic;
+import com.ai_question_paper_generator.dto.chapter_dto.ChapterDtoWithoutPath;
 import com.ai_question_paper_generator.dto.chunk_dto.ChunkDto;
 import com.ai_question_paper_generator.mapper.ChunkMapper;
 import com.ai_question_paper_generator.repository.ChunkRepository;
@@ -21,15 +24,35 @@ public class ChunkService {
     private final ChunkMapper chunkMapper;
     private final ChapterService chapterService;
 
+
+
+    /*
+        Chunk book into chapters then save the metadata of those chapters into database.
+        Further chunk those chapters into chapter chunks and then store those chunks into database.
+        Also generate embeddings.
+     */
     @Async
-    public void chunkBookIntoChapters(String bookText, BookDtoBasic bookDtoBasic){
+    public void chunkBookIntoChapters(String bookText, BookDtoWithId bookDtoWithId){
         String text = textCleaningService.cleanText(bookText);
         List<String> chapters = splitIntoChapters(text);
+        for(String chapter : chapters){
+            saveChapter(chapter, bookDtoWithId);
+        }
     }
 
-    private void saveChapter(String chapterText){
-        List<String> chunks = chunkChapter(chapterText);
-        long chapter_id = 2;
+    //Save chapter metadata into database
+    private void saveChapter(String chapter, BookDtoWithId bookDtoWithId){
+
+        String chapterName = chapterService.extractChapterName(chapter);
+
+        //Save chapter metadata to database
+        ChapterDtoBasic chapterDtoBasic = chapterService.saveChapter(new ChapterDtoWithoutPath(chapterName,  bookDtoWithId));
+
+        // Chunk chapter text
+        List<String> chunks = chunkChapter(chapter);
+
+        long chapter_id = chapterDtoBasic.getId();
+
         for (String chunk : chunks) {
             saveChunk(chunk, chapter_id);
         }
@@ -68,7 +91,7 @@ public class ChunkService {
     }
 
 
-    private void saveChunk(String chunk, long chapter_id){
+    public void saveChunk(String chunk, long chapter_id){
         if (chunk == null || chunk.isBlank()) {
             throw new IllegalArgumentException("Chunk text cannot be empty");
         }
@@ -76,4 +99,15 @@ public class ChunkService {
         chunkRepository.save(chunkMapper.dtoToChunk(chunkDto));
     }
 
+    public List<ChunkDto> findAllChunk() {
+        return chunkMapper.toChunkDtoList(chunkRepository.findAll());
+    }
+
+    public List<ChunkDto> findAllChunk(long id) {
+        return chunkMapper.toChunkDtoList(chunkRepository.findAllById(id));
+    }
+
+    public ChunkDto saveChunk(ChunkDto chunkDto) {
+        return chunkMapper.toChunkDto(chunkRepository.save(chunkMapper.dtoToChunk(chunkDto)));
+    }
 }

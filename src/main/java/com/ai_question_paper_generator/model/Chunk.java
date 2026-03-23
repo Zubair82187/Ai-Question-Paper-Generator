@@ -14,6 +14,8 @@ public class Chunk {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
+
+    @Lob
     private String chunk_text;
 
     @ManyToOne(fetch = FetchType.LAZY)

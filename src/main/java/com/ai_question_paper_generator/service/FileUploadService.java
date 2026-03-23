@@ -1,6 +1,7 @@
 package com.ai_question_paper_generator.service;
 
 import com.ai_question_paper_generator.dto.book_dto.BookDtoBasic;
+import com.ai_question_paper_generator.dto.book_dto.BookDtoWithId;
 import com.ai_question_paper_generator.dto.book_dto.BookDtoWithPath;
 import com.ai_question_paper_generator.dto.chapter_dto.ChapterDto;
 import com.ai_question_paper_generator.exception.FileNotAllowedException;
@@ -34,14 +35,32 @@ public class FileUploadService {
 
     // Save file
     @Transactional
-    public String saveFile(MultipartFile file, String subjectName, String bookName) {
+    public String saveFile(MultipartFile file, BookDtoBasic book){
+        Path destination = saveBookIntoFileSytem(file);
+        BookDtoWithId bookDtoWithId = saveBook(book.getBookName(), book.getSubject(), destination.toString());
+        chunkBook(destination, bookDtoWithId);
+        return "file uploaded successfully";
+    }
+
+    //Save book into database
+    private BookDtoWithId saveBook(String bookName, String subjectName, String path) {
+        return bookService.saveBook(
+                new BookDtoWithPath(bookName, subjectName, path)
+        );
+    }
+
+    // Save the file into file system
+    private Path saveBookIntoFileSytem(MultipartFile file){
 
         if (file == null || file.isEmpty()) {
-            throw new FileNotAllowedException("File is empty");
+            throw new FileNotAllowedException("File is empty or no file");
         }
 
         String originalName = Optional.ofNullable(file.getOriginalFilename())
                 .orElse("unknown.pdf");
+        originalName = Paths.get(originalName).getFileName().toString();
+
+        Path destination = null;
 
         if (!originalName.toLowerCase().endsWith(".pdf")) {
             throw new FileNotAllowedException("Only PDF allowed");
@@ -55,33 +74,30 @@ public class FileUploadService {
             }
 
             String fileName = UUID.randomUUID() + "_" + originalName;
-            Path destination = root.resolve(fileName);
+            destination = root.resolve(fileName);
 
-            // Save file safely
+            // Save file in file system
             try (InputStream inputStream = file.getInputStream()) {
                 Files.copy(inputStream, destination, StandardCopyOption.REPLACE_EXISTING);
             }
-
-            // Save Book in DB
-            BookDtoBasic savedBook = bookService.saveBook(
-                    new BookDtoWithPath(bookName, subjectName, destination.toString())
-            );
-
-            // Chunk after DB save
-            chunkBook(destination, savedBook);
-
-            return "File saved successfully";
+            return destination;
 
         } catch (Exception e) {
 
             // delete file if DB fails
-            try {
-                Files.deleteIfExists(root);
-            } catch (IOException ignored) {}
+            if (destination != null) {
+                try {
+                    Files.deleteIfExists(destination);
+                } catch (IOException exception) {
+                    exception.printStackTrace();
+                }
+            }
 
-            throw  new FileNotSavedException("File upload failed");
+            throw  new FileNotSavedException("File upload failed : "+ e);
         }
+
     }
+
 
     // Save chapters
     @Transactional
@@ -91,7 +107,7 @@ public class FileUploadService {
             throw new FileNotAllowedException("No files uploaded");
         }
 
-        // This method is not complete i have to fix it
+        // This method is not complete code. I have to fix it
         BookDtoBasic book = bookService.saveBook(mapper.basicBookDto(bookDtoBasic));
 
         if (!Files.exists(root)) {
@@ -206,7 +222,7 @@ public class FileUploadService {
 
 
     //Chunk the book into chapters and then further
-    private void chunkBook(Path path, BookDtoBasic bookDtoBasic){
+    private void chunkBook(Path path, BookDtoWithId bookDtoWithId){
 
         String text;
 
@@ -217,7 +233,7 @@ public class FileUploadService {
             else {
                 text = extractTextFromFile(path.toString());
             }
-            chunkService.chunkBookIntoChapters(text, bookDtoBasic);
+            chunkService.chunkBookIntoChapters(text, bookDtoWithId);
 
         } catch (IOException e) {
             throw new RuntimeException(e);
