@@ -40,8 +40,8 @@ public class ChunkService {
         }
     }
 
-    //Save chapter metadata into database
-    private void saveChapter(String chapter, BookDtoWithId bookDtoWithId){
+    //Save chapter metadata into database and chunk them  to store chunks into database
+    public void saveChapter(String chapter, BookDtoWithId bookDtoWithId){
 
         String chapterName = chapterService.extractChapterName(chapter);
 
@@ -53,6 +53,7 @@ public class ChunkService {
 
         long chapter_id = chapterDtoBasic.getId();
 
+        // Save chunk to database
         for (String chunk : chunks) {
             saveChunk(chunk, chapter_id);
         }
@@ -91,7 +92,7 @@ public class ChunkService {
     }
 
 
-    public void saveChunk(String chunk, long chapter_id){
+    private void saveChunk(String chunk, long chapter_id){
         if (chunk == null || chunk.isBlank()) {
             throw new IllegalArgumentException("Chunk text cannot be empty");
         }
@@ -107,7 +108,7 @@ public class ChunkService {
         return chunkMapper.toChunkDtoList(chunkRepository.findAllById(id));
     }
 
-    public ChunkDto saveChunk(ChunkDto chunkDto) {
+    private ChunkDto saveChunk(ChunkDto chunkDto) {
         return chunkMapper.toChunkDto(chunkRepository.save(chunkMapper.dtoToChunk(chunkDto)));
     }
 }

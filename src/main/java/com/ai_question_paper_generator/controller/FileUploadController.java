@@ -22,7 +22,7 @@ public class FileUploadController {
     private FileUploadService service;
 
     @PostMapping("/upload")
-    public ResponseEntity<String> uploadPdf(@RequestParam MultipartFile pdf,
+    public ResponseEntity<String> uploadBook(@RequestParam MultipartFile pdf,
                                             @RequestPart @Valid BookDtoBasic bookDtoBasic){
         return ResponseEntity.status(HttpStatus.OK).body(service.saveFile(pdf, bookDtoBasic));
     }
