@@ -23,6 +23,7 @@ public class ChunkService {
     private final ChunkRepository chunkRepository;
     private final ChunkMapper chunkMapper;
     private final ChapterService chapterService;
+    private final EmbeddingService embeddingService;
 
 
 
@@ -41,6 +42,7 @@ public class ChunkService {
     }
 
     //Save chapter metadata into database and chunk them  to store chunks into database
+    @Async
     public void saveChapter(String chapter, BookDtoWithId bookDtoWithId){
 
         String chapterName = chapterService.extractChapterName(chapter);
@@ -55,7 +57,8 @@ public class ChunkService {
 
         // Save chunk to database
         for (String chunk : chunks) {
-            saveChunk(chunk, chapter_id);
+            List<Double> embedding = embeddingService.generateEmbedding(chunk);
+            saveChunk(chunk, chapter_id, embedding);
         }
     }
 
@@ -92,11 +95,11 @@ public class ChunkService {
     }
 
 
-    private void saveChunk(String chunk, long chapter_id){
+    private void saveChunk(String chunk, long chapter_id, List<Double> embedding){
         if (chunk == null || chunk.isBlank()) {
             throw new IllegalArgumentException("Chunk text cannot be empty");
         }
-        ChunkDto chunkDto =  new ChunkDto(chunk, chapterService.findChapterById(chapter_id));
+        ChunkDto chunkDto =  new ChunkDto(chunk, embedding,chapterService.findChapterById(chapter_id));
         chunkRepository.save(chunkMapper.dtoToChunk(chunkDto));
     }
 

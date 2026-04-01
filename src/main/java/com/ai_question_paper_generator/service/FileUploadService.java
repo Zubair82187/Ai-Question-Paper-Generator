@@ -139,7 +139,7 @@ public class FileUploadService {
             Path destination = root.resolve(fileName);
             Files.copy(inputStream, destination);
 
-            chapterService.saveChapter(new ChapterDto(fileName, destination.toString(), book));
+            chapterService.saveChapter(new ChapterDto(fileName, destination.toString(), book), book_id);
             return "Successfully uploaded";
 
         } catch (IOException e) {

@@ -61,6 +61,11 @@ public class GlobalExceptionHandler{
         return responseEntity(HttpStatus.BAD_REQUEST, "Invalid request body", errors);
     }
 
+    @ExceptionHandler(CouldNotCreated.class)
+    public ResponseEntity<Object> couldNotCreated(CouldNotCreated ex){
+        return responseEntity(HttpStatus.INTERNAL_SERVER_ERROR, ex);
+    }
+
     private ResponseEntity<Object> responseEntity(HttpStatus status, Exception exception){
         ResponseError responseError = new ResponseError(LocalDateTime.now(), exception.getMessage(), status.value());
         return new ResponseEntity<>(responseError, status);

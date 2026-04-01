@@ -23,8 +23,12 @@ public class ChapterService {
     private final ChapterRepository chapterRepository;
     private final ChapterMapper chapterMapper;
 
-    public ChapterDtoBasic saveChapter(ChapterDto chapter){
-        return chapterMapper.toChapterBasicDto(chapterMapper.toChapter(chapter));
+    public ChapterDtoBasic saveChapter(ChapterDto chapter, long book_id){
+        return chapterMapper.toChapterBasicDto(
+                chapterRepository.save(
+                        chapterMapper.toChapter(chapter)
+                )
+        );
     }
 
     @Async
