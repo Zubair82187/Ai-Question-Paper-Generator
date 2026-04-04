@@ -1,14 +1,26 @@
 package com.ai_question_paper_generator.service;
 
+import com.ai_question_paper_generator.dto.book_dto.BookDtoBasic;
+import com.ai_question_paper_generator.dto.chapter_dto.ChapterDtoBasic;
+import com.ai_question_paper_generator.dto.chunk_dto.ChunkDto;
+import com.ai_question_paper_generator.dto.query_dto.ShortQuestionQueryDto;
+import com.ai_question_paper_generator.model.question_generation_inputs.Query;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.Collections;
+import java.util.List;
+
 @Service
 @AllArgsConstructor
 public class QuestionService {
+
     private final AiClient aiClient;
+    private final BookService bookService;
+    private final ChapterService chapterService;
+    private final ChunkService chunkService;
 
     public String generateQuestions(String topic, String text) {
 
@@ -38,7 +50,7 @@ public class QuestionService {
         ObjectMapper mapper = new ObjectMapper();
 
         JsonNode root = mapper.readTree(fullResponseString);
-        String responseText = root.get("response").asText();
+        String responseText = root.get("response").asString();
         responseText = responseText.replace("```", "").trim();
 
         return responseText;
@@ -48,18 +60,18 @@ public class QuestionService {
     public String summerizeText(String text){
         String prompt = """
                 You are a text summerizer.
-                
+               \s
                 Rules:
                 Summerize whole book text into one thousand to two thousand words maximum.
-                cover all the chapters 
+                cover all the chapters\s
                 topics from all chapters
-                all the excercise if given 
+                all the excercise if given\s
                 all the examples if it's a maths, physics or chemistry book
                 So that I can generate questions from this summary without leaving even a single topic from book.
-                
+               \s
                 Content:
-                %s          
-                """.formatted(text);
+                %s         \s
+               \s""".formatted(text);
         String fullResponseString = aiClient.generate(prompt);
 
         ObjectMapper objectMapper = new ObjectMapper();
@@ -69,4 +81,25 @@ public class QuestionService {
         responseText = responseText.replace("```", "").trim();
         return responseText;
     }
+
+    // generate questions from a specific chapter and the questions would be every type like mcq, short and long.
+    public String generateFromChapter(Query query){
+
+        List<ChunkDto> chunks = chunkService.findChunkByChapter(query.getChapter_id());
+        Collections.shuffle(chunks);
+        chunks = chunks.stream().limit(query.getQuestion_count()).toList();
+
+        return aiClient.generateQuestions(chunks, query);
+    }
+
+    // Generate short questions from a specific chapter.
+    public String shortQuestionsFromChapter(ShortQuestionQueryDto queryDto){
+        List<ChunkDto> chunks = chunkService.findChunkByChapter(queryDto.getChapter_id());
+        Collections.shuffle(chunks);
+        chunks = chunks.stream().limit(queryDto.getQuestion_count()).toList();
+        return aiClient.shortQuestionsFromChapter(chunks, queryDto);
+    }
+
+
+
 }

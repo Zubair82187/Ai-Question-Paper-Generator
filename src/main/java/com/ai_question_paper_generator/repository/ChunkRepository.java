@@ -10,4 +10,6 @@ import java.util.List;
 public interface ChunkRepository extends JpaRepository<Chunk, Long> {
 
     List<Chunk> findAllById(Long id);
- }
+
+    List<Chunk> findChunkByChapterId(long chapterId);
+}

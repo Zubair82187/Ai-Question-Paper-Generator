@@ -81,11 +81,10 @@ public class ChapterService {
         return "Unknown Chapter";
     }
 
-
     // Find chapter by chapter id
-    public Chapter findChapterById(long chapter_id){
-        return chapterRepository.findById(chapter_id)
-                .orElseThrow(()-> new NotFoundException("There is no chapter with id: "+chapter_id));
+    public ChapterDtoBasic chapterById(long chapter_id){
+        return chapterMapper.toChapterBasicDto(chapterRepository.findById(chapter_id)
+                .orElseThrow(()-> new NotFoundException("There is no chapter with id: "+chapter_id)));
     }
 
     public ChapterDtoBasic saveChapter(ChapterDtoWithoutPath chapterDtoWithoutPath) {

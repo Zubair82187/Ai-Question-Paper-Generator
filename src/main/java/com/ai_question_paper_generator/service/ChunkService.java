@@ -99,7 +99,7 @@ public class ChunkService {
         if (chunk == null || chunk.isBlank()) {
             throw new IllegalArgumentException("Chunk text cannot be empty");
         }
-        ChunkDto chunkDto =  new ChunkDto(chunk, embedding,chapterService.findChapterById(chapter_id));
+        ChunkDto chunkDto =  new ChunkDto(chunk, embedding,chapterService.chapterById(chapter_id));
         chunkRepository.save(chunkMapper.dtoToChunk(chunkDto));
     }
 
@@ -113,5 +113,9 @@ public class ChunkService {
 
     private ChunkDto saveChunk(ChunkDto chunkDto) {
         return chunkMapper.toChunkDto(chunkRepository.save(chunkMapper.dtoToChunk(chunkDto)));
+    }
+
+    public List<ChunkDto> findChunkByChapter(long chapter_id){
+        return chunkMapper.toListOfChunkDto(chunkRepository.findChunkByChapterId(chapter_id));
     }
 }

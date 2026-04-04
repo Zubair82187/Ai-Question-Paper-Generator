@@ -12,4 +12,6 @@ public interface ChunkMapper {
     ChunkDto toChunkDto(Chunk chunk);
 
     List<ChunkDto> toChunkDtoList(List<Chunk> all);
+
+    List<ChunkDto> toListOfChunkDto(List<Chunk> chunkByChapterId);
 }
