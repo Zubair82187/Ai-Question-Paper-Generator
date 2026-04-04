@@ -10,25 +10,16 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class ShortQuestionQueryDto {
+public class McqQuestionsQueryDto {
 
     // set chapter id from which you want to generate questions.
     @NotBlank(message = "chapter id can not be null")
     private long chapter_id;
 
     // set number of questions you want to generate.
-    @NotBlank(message = "number of questions must be defined")
+    @NotBlank(message = "number of questions can not be zero")
     private int question_count;
 
-    // Set number of line for a short answer.
-    @NotBlank(message = "number of lines in which question can be answered must be defined")
-    private int shortAnswer_lines;
-
-    // set number of short questions.
-    @NotBlank(message = "number of short questions you want to generate can not be empty")
-    private int number_of_short_question;
-
     // set difficulty.
-    @NotBlank(message = "difficulty can not be null")
     private Difficulty difficulty;
 }

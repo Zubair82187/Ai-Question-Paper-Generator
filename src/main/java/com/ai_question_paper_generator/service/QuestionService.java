@@ -1,8 +1,8 @@
 package com.ai_question_paper_generator.service;
 
-import com.ai_question_paper_generator.dto.book_dto.BookDtoBasic;
-import com.ai_question_paper_generator.dto.chapter_dto.ChapterDtoBasic;
 import com.ai_question_paper_generator.dto.chunk_dto.ChunkDto;
+import com.ai_question_paper_generator.dto.query_dto.LongQuestionsQueryDto;
+import com.ai_question_paper_generator.dto.query_dto.McqQuestionsQueryDto;
 import com.ai_question_paper_generator.dto.query_dto.ShortQuestionQueryDto;
 import com.ai_question_paper_generator.model.question_generation_inputs.Query;
 import lombok.AllArgsConstructor;
@@ -92,7 +92,7 @@ public class QuestionService {
         return aiClient.generateQuestions(chunks, query);
     }
 
-    // Generate short questions from a specific chapter.
+    // Generate short answer questions from a specific chapter.
     public String shortQuestionsFromChapter(ShortQuestionQueryDto queryDto){
         List<ChunkDto> chunks = chunkService.findChunkByChapter(queryDto.getChapter_id());
         Collections.shuffle(chunks);
@@ -100,6 +100,18 @@ public class QuestionService {
         return aiClient.shortQuestionsFromChapter(chunks, queryDto);
     }
 
+    // Generate long answer questions from a specific chapter.
+    public String longQuestionsFromChapter(LongQuestionsQueryDto queryDto){
+        List<ChunkDto> chunks = chunkService.findChunkByChapter(queryDto.getChapter_id());
+        Collections.shuffle(chunks);
+        chunks = chunks.stream().limit(queryDto.getQuestion_count()).toList();
+        return aiClient.longQuestionsFromChapter(chunks, queryDto);
+    }
 
-
+    public String mcqQuestionsFromChapter(McqQuestionsQueryDto queryDto){
+        List<ChunkDto> chunks = chunkService.findChunkByChapter(queryDto.getChapter_id());
+        Collections.shuffle(chunks);
+        chunks = chunks.stream().limit(queryDto.getQuestion_count()).toList();
+        return aiClient.mcqQuestionsFromChapter(chunks, queryDto);
+    }
 }

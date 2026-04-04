@@ -1,6 +1,8 @@
 package com.ai_question_paper_generator.service;
 
 import com.ai_question_paper_generator.dto.chunk_dto.ChunkDto;
+import com.ai_question_paper_generator.dto.query_dto.LongQuestionsQueryDto;
+import com.ai_question_paper_generator.dto.query_dto.McqQuestionsQueryDto;
 import com.ai_question_paper_generator.dto.query_dto.ShortQuestionQueryDto;
 import com.ai_question_paper_generator.exception.NoResponseFound;
 import com.ai_question_paper_generator.model.question_generation_inputs.Query;
@@ -23,7 +25,7 @@ public class OllamaClient implements AiClient{
             "http://localhost:11434/api/generate";
 
 
-    //This is s test method to test about our ollama is working or not. i have to delete it.
+    //This is s test method to test about our ollama is working or not. I have to delete it.
     @Override
     public String generate(String prompt) {
         OkHttpClient client = new OkHttpClient.Builder()
@@ -76,14 +78,22 @@ public class OllamaClient implements AiClient{
 
     @Override
     public String generateQuestions(List<ChunkDto> chunks, Query query) {
-        String prompt = prompt(chunks, query);
-        return generateResponse(prompt);
+        return generateResponse(prompt(chunks, query));
     }
 
     @Override
     public String shortQuestionsFromChapter(List<ChunkDto> chunks, ShortQuestionQueryDto queryDto) {
-        String prompt = shortQuestionFromChapterPrompt(chunks, queryDto);
-        return generateResponse(prompt);
+        return generateResponse(shortQuestionFromChapterPrompt(chunks, queryDto));
+    }
+
+    @Override
+    public String longQuestionsFromChapter(List<ChunkDto> chunks, LongQuestionsQueryDto queryDto) {
+        return generateResponse(longQuestionFromChapterPrompt(chunks, queryDto));
+    }
+
+    @Override
+    public String mcqQuestionsFromChapter(List<ChunkDto> chunks, McqQuestionsQueryDto queryDto) {
+        return generateResponse(mcqQuestionFromChapterPrompt(chunks, queryDto));
     }
 
     private String shortQuestionFromChapterPrompt(List<ChunkDto> chunks, ShortQuestionQueryDto queryDto){
@@ -95,7 +105,7 @@ public class OllamaClient implements AiClient{
         String types_of_questions = """
                     - %d Short Answer Questions
                     - %s difficulty
-                """.formatted(queryDto.getNumber_of_short_question(),
+                """.formatted(queryDto.getQuestion_count(),
                 queryDto.getDifficulty());
 
         return """
@@ -183,6 +193,96 @@ public class OllamaClient implements AiClient{
                 types_of_questions,
                 query.getShortAnswer_lines(),
                 query.getLongAnswer_words(),
+                content
+        );
+    }
+
+    private String longQuestionFromChapterPrompt(List<ChunkDto> chunks, LongQuestionsQueryDto queryDto){
+
+        // Merge all chunks as a single string
+        String content = chunks.stream()
+                .map(ChunkDto::getChunk_text)
+                .reduce("", (a, b) -> a + "\n" + b);
+
+        String types_of_questions = """
+                    - %d Long Answer Questions
+                    - %s difficulty
+                """.formatted(queryDto.getQuestion_count(),
+                queryDto.getDifficulty());
+
+        return """
+                    You are an expert academic question paper generator.
+                    Your task is to generate a complete exam question paper strictly based on the provided content.
+                    INPUT:
+                    Content will be given below.
+                    You must generate:
+                    %s
+                   
+                    RULES:
+                    - Use ONLY the given content.
+                    - Do NOT add external knowledge.
+                    - Do NOT hallucinate facts.
+                    - Ensure questions cover all important parts of the content.
+                    - Avoid repetition.
+                    - Long answer question can be answered in %d words at least.
+                   
+                    LONG ANSWER FORMAT:
+                    Q1. Question
+                  
+                    CONTENT:
+                    %s
+                  
+                    Generate the question paper now.
+                   """.formatted(
+                types_of_questions,
+                queryDto.getLongAnswer_words(),
+                content
+        );
+    }
+
+    private String mcqQuestionFromChapterPrompt(List<ChunkDto> chunks, McqQuestionsQueryDto queryDto){
+
+        // Merge all chunks as a single string
+        String content = chunks.stream()
+                .map(ChunkDto::getChunk_text)
+                .reduce("", (a, b) -> a + "\n" + b);
+
+        String types_of_questions = """
+                    - %d Multiple Choice Questions (MCQs)
+                    - %s Difficulty
+                """.formatted(queryDto.getQuestion_count(),
+                queryDto.getDifficulty()
+        );
+
+
+        return  """
+                    You are an expert academic question paper generator.
+                    Your task is to generate a complete exam question paper strictly based on the provided content.
+                    INPUT:
+                    Content will be given below.
+                    You must generate:
+                    %s
+                   
+                    RULES:
+                    - Use ONLY the given content.
+                    - Do NOT add external knowledge.
+                    - Do NOT hallucinate facts.
+                    - Ensure questions cover all important parts of the content.
+                    - Avoid repetition.
+                   
+                    MCQ FORMAT:
+                    Q1. Question
+                    A. Option
+                    B. Option
+                    C. Option
+                    D. Option
+                   
+                    CONTENT:
+                    %s
+                  
+                    Generate the question paper now.
+                   """.formatted(
+                types_of_questions,
                 content
         );
     }
