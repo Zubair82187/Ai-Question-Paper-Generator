@@ -1,5 +1,6 @@
 package com.ai_question_paper_generator.repository;
 
+import com.ai_question_paper_generator.dto.chunk_dto.ChunkDto;
 import com.ai_question_paper_generator.model.Chunk;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -12,4 +13,6 @@ public interface ChunkRepository extends JpaRepository<Chunk, Long> {
     List<Chunk> findAllById(Long id);
 
     List<Chunk> findChunkByChapterId(long chapterId);
+
+    List<ChunkDto> findChunkByBookId(long bookId);
 }

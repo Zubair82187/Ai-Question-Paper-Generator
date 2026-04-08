@@ -5,8 +5,10 @@ import com.ai_question_paper_generator.dto.book_dto.BookDtoWithId;
 import com.ai_question_paper_generator.dto.chapter_dto.ChapterDtoBasic;
 import com.ai_question_paper_generator.dto.chapter_dto.ChapterDtoWithoutPath;
 import com.ai_question_paper_generator.dto.chunk_dto.ChunkDto;
+import com.ai_question_paper_generator.exception.NotFoundException;
 import com.ai_question_paper_generator.mapper.ChunkMapper;
 import com.ai_question_paper_generator.repository.ChunkRepository;
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -117,5 +119,13 @@ public class ChunkService {
 
     public List<ChunkDto> findChunkByChapter(long chapter_id){
         return chunkMapper.toListOfChunkDto(chunkRepository.findChunkByChapterId(chapter_id));
+    }
+
+    public List<ChunkDto> findChunkByBookId(long bookId) {
+        List<ChunkDto> chunks = chunkRepository.findChunkByBookId(bookId);
+        if(chunks.isEmpty()){
+            throw new NotFoundException("there is no chunk of this book.");
+        }
+        return chunks;
     }
 }

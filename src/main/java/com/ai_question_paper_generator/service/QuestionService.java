@@ -1,9 +1,7 @@
 package com.ai_question_paper_generator.service;
 
 import com.ai_question_paper_generator.dto.chunk_dto.ChunkDto;
-import com.ai_question_paper_generator.dto.query_dto.LongQuestionsQueryDto;
-import com.ai_question_paper_generator.dto.query_dto.McqQuestionsQueryDto;
-import com.ai_question_paper_generator.dto.query_dto.ShortQuestionQueryDto;
+import com.ai_question_paper_generator.dto.query_dto.*;
 import com.ai_question_paper_generator.model.question_generation_inputs.Query;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,9 +16,8 @@ import java.util.List;
 public class QuestionService {
 
     private final AiClient aiClient;
-    private final BookService bookService;
-    private final ChapterService chapterService;
     private final ChunkService chunkService;
+    private final BookQuestionGeneration bookQuestionGeneration;
 
     public String generateQuestions(String topic, String text) {
 
@@ -57,30 +54,6 @@ public class QuestionService {
 
     }
 
-    public String summerizeText(String text){
-        String prompt = """
-                You are a text summerizer.
-               \s
-                Rules:
-                Summerize whole book text into one thousand to two thousand words maximum.
-                cover all the chapters\s
-                topics from all chapters
-                all the excercise if given\s
-                all the examples if it's a maths, physics or chemistry book
-                So that I can generate questions from this summary without leaving even a single topic from book.
-               \s
-                Content:
-                %s         \s
-               \s""".formatted(text);
-        String fullResponseString = aiClient.generate(prompt);
-
-        ObjectMapper objectMapper = new ObjectMapper();
-
-        JsonNode root = objectMapper.readTree(fullResponseString);
-        String responseText = root.get("response").toString();
-        responseText = responseText.replace("```", "").trim();
-        return responseText;
-    }
 
     // generate questions from a specific chapter and the questions would be every type like mcq, short and long.
     public String generateFromChapter(Query query){
@@ -97,7 +70,7 @@ public class QuestionService {
         List<ChunkDto> chunks = chunkService.findChunkByChapter(queryDto.getChapter_id());
         Collections.shuffle(chunks);
         chunks = chunks.stream().limit(queryDto.getQuestion_count()).toList();
-        return aiClient.shortQuestionsFromChapter(chunks, queryDto);
+        return aiClient.shortQuestions(chunks, queryDto);
     }
 
     // Generate long answer questions from a specific chapter.
@@ -105,13 +78,32 @@ public class QuestionService {
         List<ChunkDto> chunks = chunkService.findChunkByChapter(queryDto.getChapter_id());
         Collections.shuffle(chunks);
         chunks = chunks.stream().limit(queryDto.getQuestion_count()).toList();
-        return aiClient.longQuestionsFromChapter(chunks, queryDto);
+        return aiClient.longQuestions(chunks, queryDto);
     }
 
     public String mcqQuestionsFromChapter(McqQuestionsQueryDto queryDto){
         List<ChunkDto> chunks = chunkService.findChunkByChapter(queryDto.getChapter_id());
         Collections.shuffle(chunks);
         chunks = chunks.stream().limit(queryDto.getQuestion_count()).toList();
-        return aiClient.mcqQuestionsFromChapter(chunks, queryDto);
+        return aiClient.mcqQuestions(chunks, queryDto);
     }
+
+
+    public String bookQuestion(BookQueryDto queryDto){
+        return bookQuestionGeneration.generateFromBook(queryDto);
+    }
+
+    public String shortQuestionFromBook(BookShortQuestionQueryDto queryDto){
+        return bookQuestionGeneration.shortQuestion(queryDto);
+    }
+
+    public String longQuestionFromBook(BookLongQuestionQueryDto queryDto){
+        return bookQuestionGeneration.longQuestion(queryDto);
+    }
+
+    public String mcqQuestionFromBook(BookMcqQuestionQueryDto queryDto){
+        return bookQuestionGeneration.mcqQuestion(queryDto);
+    }
+
+
 }
