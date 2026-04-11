@@ -5,6 +5,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,12 +24,16 @@ public class EmbeddingService {
 
         text = text.replace("\n", " ").replace("\r", " ");
 
-        String body = """
-            {
-              "model": "nomic-embed-text",
-              "prompt": "%s"
-            }
-            """.formatted(text);
+        text = text.replace("\u0000", ""); // remove hidden null chars
+
+        ObjectMapper mapper = new ObjectMapper();
+
+        ObjectNode json = mapper.createObjectNode();
+        json.put("model", "nomic-embed-text");
+        json.put("prompt", text);
+
+        String body = mapper.writeValueAsString(json);
+
 
         Request request = new Request.Builder()
                 .url("http://localhost:11434/api/embeddings")
@@ -40,11 +45,13 @@ public class EmbeddingService {
         try (Response response = client.newCall(request).execute()) {
 
             String responseBody = response.body().string();
-
-            ObjectMapper mapper = new ObjectMapper();
             JsonNode jsonNode = mapper.readTree(responseBody);
 
             JsonNode embeddingNode = jsonNode.get("embedding");
+
+            if (embeddingNode == null || !embeddingNode.isArray()) {
+                throw new RuntimeException("Invalid embedding response: " + responseBody);
+            }
 
             List<Double> embedding = new ArrayList<>();
             for (JsonNode node : embeddingNode) {

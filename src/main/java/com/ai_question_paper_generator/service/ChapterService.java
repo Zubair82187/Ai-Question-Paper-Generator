@@ -55,7 +55,7 @@ public class ChapterService {
         String[] lines = chapterText.split("\\r?\\n");
 
         Pattern pattern = Pattern.compile(
-                "(?i)^(chapter|unit|exercise|part|section|lesson|module)\\s+[A-Za-z0-9.IVXLC]+[:\\-.]?\\s*(.*)"
+                "(?i)^(chapter|unit|lesson|section|part|module)\\s+\\d+[.:\\-]?\\s*(.+)?"
         );
 
         for (int i = 0; i < Math.min(10, lines.length); i++) {
@@ -66,15 +66,26 @@ public class ChapterService {
 
             Matcher matcher = pattern.matcher(line);
 
-            if (matcher.find()) {
+            if (matcher.matches()) {
+
+                String title = matcher.group(2);
+
+                // if only number exists → skip
+                if (title == null || title.trim().isEmpty() || title.matches("\\d+")) {
+                    continue;
+                }
+
                 return line;
             }
         }
 
-        // Fallback: return-first meaningful line
+        // fallback: find meaningful sentence
         for (int i = 0; i < Math.min(10, lines.length); i++) {
-            if (!lines[i].trim().isBlank() && lines[i].length() > 5) {
-                return lines[i].trim();
+
+            String line = lines[i].trim();
+
+            if (line.length() > 10 && line.matches(".*[a-zA-Z].*")) {
+                return line;
             }
         }
 

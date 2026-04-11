@@ -17,7 +17,6 @@ public class QuestionService {
 
     private final AiClient aiClient;
     private final ChunkService chunkService;
-    private final BookQuestionGeneration bookQuestionGeneration;
 
     public String generateQuestions(String topic, String text) {
 
@@ -89,20 +88,42 @@ public class QuestionService {
     }
 
 
-    public String bookQuestion(BookQueryDto queryDto){
-        return bookQuestionGeneration.generateFromBook(queryDto);
+    public String generateFromBook(BookQueryDto queryDto){
+        List<ChunkDto> chunks = chunkService.findChunkByBookId(queryDto.getBook_id());
+        Collections.shuffle(chunks);
+        chunks = chunks.stream().limit(queryDto.getQuestion_count()).toList();
+
+        return aiClient.generateQuestions(chunks, queryDto);
     }
 
-    public String shortQuestionFromBook(BookShortQuestionQueryDto queryDto){
-        return bookQuestionGeneration.shortQuestion(queryDto);
+    public String shortQuestion(BookShortQuestionQueryDto queryDto){
+        List<ChunkDto> chunkList = chunkService.findChunkByBookId(queryDto.getBook_id());
+        Collections.shuffle(chunkList);
+        List<ChunkDto> chunks = chunkList.stream()
+                .limit(queryDto.getQuestion_count()+queryDto.getQuestion_count()/2)
+                .toList();
+
+        return aiClient.shortQuestions(chunks, queryDto);
     }
 
-    public String longQuestionFromBook(BookLongQuestionQueryDto queryDto){
-        return bookQuestionGeneration.longQuestion(queryDto);
+    public String longQuestion(BookLongQuestionQueryDto queryDto){
+        List<ChunkDto> chunkList = chunkService.findChunkByBookId(queryDto.getBook_id());
+        Collections.shuffle(chunkList);
+        List<ChunkDto> chunks = chunkList.stream()
+                .limit(queryDto.getQuestion_count()+queryDto.getQuestion_count()/2)
+                .toList();
+
+        return aiClient.longQuestions(chunks, queryDto);
     }
 
-    public String mcqQuestionFromBook(BookMcqQuestionQueryDto queryDto){
-        return bookQuestionGeneration.mcqQuestion(queryDto);
+    public String mcqQuestion(BookMcqQuestionQueryDto queryDto){
+        List<ChunkDto> chunkList = chunkService.findChunkByBookId(queryDto.getBook_id());
+        Collections.shuffle(chunkList);
+        List<ChunkDto> chunks = chunkList.stream()
+                .limit(queryDto.getQuestion_count()+queryDto.getQuestion_count()/2)
+                .toList();
+
+        return aiClient.mcqQuestions(chunks, queryDto);
     }
 
 

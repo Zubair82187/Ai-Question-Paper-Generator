@@ -157,13 +157,14 @@ public class FileUploadService {
             throw new IllegalArgumentException("file not found");
         }
 
-        try(InputStream inputStream = Files.newInputStream(path)) {
-            PDDocument document = PDDocument.load(inputStream);
+        try(InputStream inputStream = Files.newInputStream(path);
+            PDDocument document = PDDocument.load(inputStream)){
             PDFTextStripper stripper = new PDFTextStripper();
             return stripper.getText(document);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+
     }
 
     // Extract text from the scanned file

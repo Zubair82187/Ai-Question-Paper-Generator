@@ -5,6 +5,7 @@ import com.ai_question_paper_generator.dto.query_dto.*;
 import com.ai_question_paper_generator.exception.NoResponseFound;
 import com.ai_question_paper_generator.model.question_generation_inputs.Query;
 import okhttp3.*;
+import org.springframework.boot.jackson.autoconfigure.JacksonProperties;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
@@ -77,7 +78,9 @@ public class OllamaClient implements AiClient{
 
     @Override
     public String generateQuestions(List<ChunkDto> chunks, Query query) {
-        return generateResponse(prompt(chunks, query));
+        String prompt = prompt(chunks.get(0), query);
+        prompt = prompt.replace("\n", " ").replace("\r", " ");
+        return generateResponse(prompt);
     }
 
     @Override
@@ -349,63 +352,31 @@ public class OllamaClient implements AiClient{
         );
     }
 
-    private String prompt(List<ChunkDto> chunks, Query query){
+    private String prompt(ChunkDto chunk, Query query){
 
         // Merge all chunks as a single string
-        String content = chunks.stream()
-                .map(ChunkDto::getChunk_text)
-                .reduce("", (a, b) -> a + "\n" + b);
+        String content = chunk.getChunk_text();
 
         String types_of_questions = """
                     - %d Multiple Choice Questions (MCQs)
-                    - %d Short Answer Questions
-                    - %d Long Answer Questions
-                """.formatted(query.getNumber_of_mcq(),
-                query.getNumber_of_short_question(),
-                query.getNumber_of_long_question()
-        );
+                """.formatted(query.getNumber_of_mcq());
 
 
-        return  """
-                    You are an expert academic question paper generator.
-                    Your task is to generate a complete exam question paper strictly based on the provided content.
-                    INPUT:
-                    Content will be given below.
-                    You must generate:
-                    %s
-                   
-                    RULES:
-                    - Use ONLY the given content.
-                    - Do NOT add external knowledge.
-                    - Do NOT hallucinate facts.
-                    - Ensure questions cover all important parts of the content.
-                    - Avoid repetition.
-                    - Short answer question can be answered in %d lines at least.
-                    - Long answer question can be answered in %d words at least.
-                   
-                    MCQ FORMAT:
-                    Q1. Question
-                    A. Option
-                    B. Option
-                    C. Option
-                    D. Option
-                   
-                    SHORT ANSWER FORMAT:
-                    Q1. Question
-                  
-                    LONG ANSWER FORMAT:
-                    Q1. Question
-                  
-                    CONTENT:
-                    %s
-                  
-                    Generate the question paper now.
-                   """.formatted(
-                types_of_questions,
-                query.getShortAnswer_lines(),
-                query.getLongAnswer_words(),
-                content
-        );
+        return """
+                You are an exam question generator.
+       
+                Rules:
+                - Generate EXACTLY %d questions
+                - No explanation
+                - Return ONLY valid JSON
+                - No markdown
+       
+                Content:
+                %s
+                """.formatted(
+                                query.getNumber_of_mcq(),
+                                content
+                        );
     }
 
     private String longQuestionPrompt(List<ChunkDto> chunks, LongQuestionsQueryDto queryDto){
@@ -501,7 +472,7 @@ public class OllamaClient implements AiClient{
     private String generateResponse(String prompt){
         OkHttpClient client = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(120, TimeUnit.SECONDS)
+                .readTimeout(300, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
                 .build();
 
@@ -512,6 +483,7 @@ public class OllamaClient implements AiClient{
             Map<String, Object> requestMap = new HashMap<>();
             requestMap.put("model", "llama3.1:8b");
             requestMap.put("prompt", prompt);
+            requestMap.put("format", "json");
             requestMap.put("stream", false);
 
             body = mapper.writeValueAsString(requestMap);
@@ -529,15 +501,15 @@ public class OllamaClient implements AiClient{
                 .build();
 
         // response handling
-        try(Response response = client.newCall(request).execute()){
+        try (Response response = client.newCall(request).execute()) {
 
-            if (response.body() != null) {
+            if(response.body() != null){
                 return response.body().string();
             }
             else{
-                throw new NoResponseFound("response body is empty");
+                throw new NoResponseFound("response body is null");
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new NoResponseFound("IO Exception while calling model API: " + e.getMessage()+" "+ e);
         }
     }

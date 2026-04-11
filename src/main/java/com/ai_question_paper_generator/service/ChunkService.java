@@ -1,6 +1,5 @@
 package com.ai_question_paper_generator.service;
 
-import com.ai_question_paper_generator.dto.book_dto.BookDtoBasic;
 import com.ai_question_paper_generator.dto.book_dto.BookDtoWithId;
 import com.ai_question_paper_generator.dto.chapter_dto.ChapterDtoBasic;
 import com.ai_question_paper_generator.dto.chapter_dto.ChapterDtoWithoutPath;
@@ -8,14 +7,13 @@ import com.ai_question_paper_generator.dto.chunk_dto.ChunkDto;
 import com.ai_question_paper_generator.exception.NotFoundException;
 import com.ai_question_paper_generator.mapper.ChunkMapper;
 import com.ai_question_paper_generator.repository.ChunkRepository;
-import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Pattern;
 
 @AllArgsConstructor
 @Service
@@ -44,7 +42,6 @@ public class ChunkService {
     }
 
     //Save chapter metadata into database and chunk them  to store chunks into database
-    @Async
     public void saveChapter(String chapter, BookDtoWithId bookDtoWithId){
 
         String chapterName = chapterService.extractChapterName(chapter);
@@ -66,8 +63,36 @@ public class ChunkService {
 
     // Split book text into chapters
     private List<String> splitIntoChapters(String text) {
-        String[] chapters = text.split("(?=(Chapter\\s+\\d+|CHAPTER\\s+\\d+|Unit\\s+\\d+|Lesson\\s+\\d+|\\d+\\.\\s+[A-Z]))");
-        return Arrays.asList(chapters);
+
+        String regex =
+                "(?im)^(chapter|unit|lesson|section|part|module)\\s+\\d+[.:\\-]?\\s*.*$" +
+                        "|^\\d+\\s*[.:]\\s+[A-Za-z].*$";
+
+        Pattern pattern = Pattern.compile(regex);
+
+        String[] lines = text.split("\\r?\\n");
+
+        List<String> chapters = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+
+        for (String line : lines) {
+
+            if (pattern.matcher(line.trim()).matches()) {
+
+                if (!current.isEmpty()) {
+                    chapters.add(current.toString());
+                    current.setLength(0);
+                }
+            }
+
+            current.append(line).append("\n");
+        }
+
+        if (!current.isEmpty()) {
+            chapters.add(current.toString());
+        }
+
+        return chapters;
     }
 
     // Chunk chapter
@@ -113,16 +138,12 @@ public class ChunkService {
         return chunkMapper.toChunkDtoList(chunkRepository.findAllById(id));
     }
 
-    private ChunkDto saveChunk(ChunkDto chunkDto) {
-        return chunkMapper.toChunkDto(chunkRepository.save(chunkMapper.dtoToChunk(chunkDto)));
-    }
-
     public List<ChunkDto> findChunkByChapter(long chapter_id){
         return chunkMapper.toListOfChunkDto(chunkRepository.findChunkByChapterId(chapter_id));
     }
 
     public List<ChunkDto> findChunkByBookId(long bookId) {
-        List<ChunkDto> chunks = chunkRepository.findChunkByBookId(bookId);
+        List<ChunkDto> chunks = chunkMapper.toChunkDtoList(chunkRepository.findChunkByBookId(bookId));
         if(chunks.isEmpty()){
             throw new NotFoundException("there is no chunk of this book.");
         }
