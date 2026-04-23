@@ -2,27 +2,27 @@ package com.ai_question_paper_generator.service;
 
 import com.ai_question_paper_generator.dto.chunk_dto.ChunkDto;
 import com.ai_question_paper_generator.dto.query_dto.*;
+import com.ai_question_paper_generator.enums.Difficulty;
+import com.ai_question_paper_generator.model.question_generation_inputs.ChapterQuery;
 import com.ai_question_paper_generator.model.question_generation_inputs.Query;
+import com.ai_question_paper_generator.model.question_generation_inputs.TopicQuery;
+import org.springframework.boot.jackson.autoconfigure.JacksonProperties;
+import tools.jackson.databind.JsonNode;
 
 import java.util.List;
 
 public interface AiClient {
     String generate(String prompt);
-    String generateChapterName(String text);
-    String generateQuestions(List<ChunkDto> chunks, Query query);
 
-    String shortQuestions(List<ChunkDto> chunks, ShortQuestionQueryDto queryDto);
+    JsonNode shortQuestions(List<ChunkDto> chunks, int questionCount, Difficulty difficulty);
 
-    String longQuestions(List<ChunkDto> chunks, LongQuestionsQueryDto queryDto);
+    JsonNode longQuestions(List<ChunkDto> chunks, int questionCount, Difficulty difficulty);
 
-    String mcqQuestions(List<ChunkDto> chunks, McqQuestionsQueryDto queryDto);
+    JsonNode mcqQuestions(List<ChunkDto> chunks, int questionCount, Difficulty difficulty);
 
+    JsonNode generateQuestions(List<ChunkDto> chunks, BookQueryDto queryDto);
 
-    String shortQuestions(List<ChunkDto> chunks, BookShortQuestionQueryDto queryDto);
+    JsonNode generateKeywords(String chapterName, String subjectName);
 
-    String longQuestions(List<ChunkDto> chunks, BookLongQuestionQueryDto queryDto);
-
-    String mcqQuestions(List<ChunkDto> chunks, BookMcqQuestionQueryDto queryDto);
-
-    String generateQuestions(List<ChunkDto> chunks, BookQueryDto queryDto);
+    JsonNode generateKeywords(TopicQuery topicQuery);
 }

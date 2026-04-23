@@ -20,11 +20,8 @@ public class Chapter {
     private Long id;
     private String chapterName;
     private String path;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "book_id")
-    private Book book;
-
-    @OneToMany(fetch = FetchType.LAZY, mappedBy = "chapter")
-    private List<Chunk> chunks;
+//
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "book_id")
+//    private Book book;
 }

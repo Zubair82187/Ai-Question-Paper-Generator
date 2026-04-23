@@ -21,8 +21,8 @@ public class Chunk {
     private String chunk_text;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "chapter_id", nullable = false)
-    private Chapter chapter;
+    @JoinColumn(name = "book_id", nullable = false)
+    private Book book;
 
     @Lob
     private List<Double> embedding;

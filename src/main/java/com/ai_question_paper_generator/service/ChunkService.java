@@ -1,19 +1,18 @@
 package com.ai_question_paper_generator.service;
 
 import com.ai_question_paper_generator.dto.book_dto.BookDtoWithId;
-import com.ai_question_paper_generator.dto.chapter_dto.ChapterDtoBasic;
-import com.ai_question_paper_generator.dto.chapter_dto.ChapterDtoWithoutPath;
 import com.ai_question_paper_generator.dto.chunk_dto.ChunkDto;
 import com.ai_question_paper_generator.exception.NotFoundException;
 import com.ai_question_paper_generator.mapper.ChunkMapper;
 import com.ai_question_paper_generator.repository.ChunkRepository;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
 
 @AllArgsConstructor
 @Service
@@ -22,7 +21,6 @@ public class ChunkService {
     private final TextCleaningService textCleaningService;
     private final ChunkRepository chunkRepository;
     private final ChunkMapper chunkMapper;
-    private final ChapterService chapterService;
     private final EmbeddingService embeddingService;
 
 
@@ -33,66 +31,23 @@ public class ChunkService {
         Also generate embeddings.
      */
     @Async
-    public void chunkBookIntoChapters(String bookText, BookDtoWithId bookDtoWithId){
+    public void chunkBook(String bookText, BookDtoWithId bookDtoWithId){
         String text = textCleaningService.cleanText(bookText);
-        List<String> chapters = splitIntoChapters(text);
-        for(String chapter : chapters){
-            saveChapter(chapter, bookDtoWithId);
-        }
-    }
+        List<String> chunks = chunkChapter(text);
 
-    //Save chapter metadata into database and chunk them  to store chunks into database
-    public void saveChapter(String chapter, BookDtoWithId bookDtoWithId){
-
-        String chapterName = chapterService.extractChapterName(chapter);
-
-        //Save chapter metadata to database
-        ChapterDtoBasic chapterDtoBasic = chapterService.saveChapter(new ChapterDtoWithoutPath(chapterName,  bookDtoWithId));
-
-        // Chunk chapter text
-        List<String> chunks = chunkChapter(chapter);
-
-        long chapter_id = chapterDtoBasic.getId();
-
-        // Save chunk to database
         for (String chunk : chunks) {
             List<Double> embedding = embeddingService.generateEmbedding(chunk);
-            saveChunk(chunk, chapter_id, embedding);
+            saveChunk(chunk, embedding, bookDtoWithId);
         }
     }
 
-    // Split book text into chapters
-    private List<String> splitIntoChapters(String text) {
-
-        String regex =
-                "(?im)^(chapter|unit|lesson|section|part|module)\\s+\\d+[.:\\-]?\\s*.*$" +
-                        "|^\\d+\\s*[.:]\\s+[A-Za-z].*$";
-
-        Pattern pattern = Pattern.compile(regex);
-
-        String[] lines = text.split("\\r?\\n");
-
-        List<String> chapters = new ArrayList<>();
-        StringBuilder current = new StringBuilder();
-
-        for (String line : lines) {
-
-            if (pattern.matcher(line.trim()).matches()) {
-
-                if (!current.isEmpty()) {
-                    chapters.add(current.toString());
-                    current.setLength(0);
-                }
-            }
-
-            current.append(line).append("\n");
+    // Save chunks to database
+    private void saveChunk(String chunk, List<Double> embedding, BookDtoWithId bookDtoWithId){
+        if (chunk == null || chunk.isBlank()) {
+            throw new IllegalArgumentException("Chunk text cannot be empty");
         }
-
-        if (!current.isEmpty()) {
-            chapters.add(current.toString());
-        }
-
-        return chapters;
+        ChunkDto chunkDto =  new ChunkDto(chunk, embedding, bookDtoWithId);
+        chunkRepository.save(chunkMapper.dtoToChunk(chunkDto));
     }
 
     // Chunk chapter
@@ -121,32 +76,27 @@ public class ChunkService {
         return chunks;
     }
 
-
-    private void saveChunk(String chunk, long chapter_id, List<Double> embedding){
-        if (chunk == null || chunk.isBlank()) {
-            throw new IllegalArgumentException("Chunk text cannot be empty");
-        }
-        ChunkDto chunkDto =  new ChunkDto(chunk, embedding,chapterService.chapterById(chapter_id));
-        chunkRepository.save(chunkMapper.dtoToChunk(chunkDto));
-    }
-
+    // Find all chunks
     public List<ChunkDto> findAllChunk() {
         return chunkMapper.toChunkDtoList(chunkRepository.findAll());
     }
 
-    public List<ChunkDto> findAllChunk(long id) {
-        return chunkMapper.toChunkDtoList(chunkRepository.findAllById(id));
-    }
 
-    public List<ChunkDto> findChunkByChapter(long chapter_id){
-        return chunkMapper.toListOfChunkDto(chunkRepository.findChunkByChapterId(chapter_id));
-    }
+    public List<ChunkDto> findChunkByBookId(long bookId, int number_of_chunks) {
 
-    public List<ChunkDto> findChunkByBookId(long bookId) {
-        List<ChunkDto> chunks = chunkMapper.toChunkDtoList(chunkRepository.findChunkByBookId(bookId));
+        Pageable pageable = PageRequest.of(0, number_of_chunks);
+        List<ChunkDto> chunks = chunkMapper.toChunkDtoList(chunkRepository.findChunkByBookId(bookId, pageable));
         if(chunks.isEmpty()){
             throw new NotFoundException("there is no chunk of this book.");
         }
         return chunks;
+    }
+
+    public List<ChunkDto> findChunkEmbeddingsByBookId(long book_id){
+        List<ChunkDto> chunkDtoList = chunkMapper.toChunkDtoList(chunkRepository.findChunkEmbeddingsByBookId(book_id));
+        if(chunkDtoList.isEmpty()){
+            throw new NotFoundException("There is no embeddings of this book. ");
+        }
+        return chunkDtoList;
     }
 }

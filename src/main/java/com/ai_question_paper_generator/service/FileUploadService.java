@@ -3,7 +3,6 @@ package com.ai_question_paper_generator.service;
 import com.ai_question_paper_generator.dto.book_dto.BookDtoBasic;
 import com.ai_question_paper_generator.dto.book_dto.BookDtoWithId;
 import com.ai_question_paper_generator.dto.book_dto.BookDtoWithPath;
-import com.ai_question_paper_generator.dto.chapter_dto.ChapterDto;
 import com.ai_question_paper_generator.exception.FileNotAllowedException;
 import com.ai_question_paper_generator.exception.FileNotSavedException;
 import lombok.AllArgsConstructor;
@@ -25,7 +24,6 @@ import java.util.*;
 @Service
 public class FileUploadService {
     private final BookService bookService;
-    private final ChapterService chapterService;
     private final Path root = Paths.get("uploads");
     private final OcrService ocrService;
     private final ChunkService chunkService;
@@ -34,16 +32,12 @@ public class FileUploadService {
     @Transactional
     public String saveFile(MultipartFile file, BookDtoBasic book){
         Path destination = saveFileIntoFileSytem(file);
-        BookDtoWithId bookDtoWithId = saveBook(book.getBookName(), book.getSubject(), destination.toString());
+        BookDtoWithId bookDtoWithId = bookService.saveBook(
+                new BookDtoWithPath(book.getBookName(), book.getSubject(), destination.toString())
+        );
+
         chunkBook(destination, bookDtoWithId);
         return "file uploaded successfully";
-    }
-
-    //Save book into database
-    private BookDtoWithId saveBook(String bookName, String subjectName, String path) {
-        return bookService.saveBook(
-                new BookDtoWithPath(bookName, subjectName, path)
-        );
     }
 
     // Save the file into file system
@@ -84,9 +78,16 @@ public class FileUploadService {
             // delete file if DB fails
             if (destination != null) {
                 try {
-                    Files.deleteIfExists(destination);
-                } catch (IOException exception) {
-                    exception.printStackTrace();
+                    boolean deleted = Files.deleteIfExists(destination);
+
+                    if (!deleted) {
+                        System.out.println("File not found for deletion: " + destination);
+                    }
+
+                } catch (IOException ioException) {
+                    throw new RuntimeException(
+                            "Failed to delete file: " + destination, ioException
+                    );
                 }
             }
 
@@ -95,61 +96,9 @@ public class FileUploadService {
 
     }
 
-    // Save chapters
-    @Transactional
-    public String saveChapters(List<MultipartFile> files, BookDtoBasic bookDtoBasic){
-
-        BookDtoWithId bookDtoWithId = saveBook(bookDtoBasic.getBookName(), bookDtoBasic.getSubject(), null);
-
-        for(MultipartFile file : files){
-            Path path = saveFileIntoFileSytem(file);
-            String text = extractText(path);
-            chunkService.saveChapter(text,bookDtoWithId);
-        }
-
-        return "Successfully uploaded";
-    }
-
-    // Save chapter into existing the book.
-    // I have to fix this methods where save chapter has some issues or not complete logic
-    @Transactional
-    public String saveChapter(MultipartFile file, long book_id){
-        if (file == null || file.isEmpty()) {
-            throw new FileNotAllowedException("No files uploaded");
-        }
-
-        BookDtoBasic book = bookService.findBookById(book_id);
-
-        if (!Files.exists(root)) {
-            try {
-                Files.createDirectories(root);
-            } catch (IOException e) {
-                throw new FileNotSavedException("Could not create directory");
-            }
-        }
-
-        String originalName = Optional.ofNullable(file.getOriginalFilename())
-                .orElse("unknown.pdf");
-
-        if (!originalName.toLowerCase().endsWith(".pdf")) {
-            throw new FileNotAllowedException("Only PDF allowed");
-        }
-
-        try (InputStream inputStream = file.getInputStream()) {
-            String fileName = UUID.randomUUID() + "_" + originalName;
-            Path destination = root.resolve(fileName);
-            Files.copy(inputStream, destination);
-
-            chapterService.saveChapter(new ChapterDto(fileName, destination.toString(), book), book_id);
-            return "Successfully uploaded";
-
-        } catch (IOException e) {
-            throw new FileNotSavedException("File upload failed: " + originalName);
-        }
-    }
 
     // Extract text from the digital file.
-    public String extractTextFromFile(String filePath){
+    private String extractTextFromFile(String filePath){
 
         Path path = Path.of(filePath);
 
@@ -185,10 +134,13 @@ public class FileUploadService {
         }
     }
 
-    //Chunk the book into chapters and then further
+    //Chunk the book
     private void chunkBook(Path path, BookDtoWithId bookDtoWithId){
-        String text = extractText(path);
-        chunkService.chunkBookIntoChapters(text, bookDtoWithId);
+        String text = extractText(path)
+                .replaceAll("[^\\x00-\\x7F]", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        chunkService.chunkBook(text, bookDtoWithId);
     }
 
     private String extractText(Path path){
@@ -206,7 +158,6 @@ public class FileUploadService {
             throw new RuntimeException(e);
         }
     }
-
 
 
 }

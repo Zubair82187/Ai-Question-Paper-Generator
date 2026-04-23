@@ -15,15 +15,15 @@ import java.util.List;
 public class ChunkController {
 
     private final ChunkService chunkService;
-
-    @GetMapping("/find_all_chunk")
-    public ResponseEntity<List<ChunkDto>> findAllChunk(){
-        return ResponseEntity.status(HttpStatus.OK).body(chunkService.findAllChunk());
-    }
-
-    @GetMapping("/find_chapter_chunk")
-    public ResponseEntity<List<ChunkDto>> findAllChunks(@RequestParam long id){
-        return ResponseEntity.status(HttpStatus.OK).body(chunkService.findAllChunk(id));
-    }
+//
+//    @GetMapping("/find_all_chunk")
+//    public ResponseEntity<List<ChunkDto>> findAllChunk(){
+//        return ResponseEntity.status(HttpStatus.OK).body(chunkService.findAllChunk());
+//    }
+//
+//    @GetMapping("/find_chapter_chunk")
+//    public ResponseEntity<List<ChunkDto>> findAllChunks(@RequestParam long id){
+//        return ResponseEntity.status(HttpStatus.OK).body(chunkService.findAllChunk(id));
+//    }
 
 }

@@ -1,7 +1,8 @@
 package com.ai_question_paper_generator.dto.query_dto;
 
 import com.ai_question_paper_generator.enums.Difficulty;
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -12,18 +13,12 @@ import lombok.NoArgsConstructor;
 public class BookShortQuestionQueryDto {
 
     // set book is from which you want to generate questions.
-    @NotBlank(message = "book id can not be null.")
-    private long book_id;
+    @NotNull(message = "book id can not be null.")
+    private Long book_id;
 
-    // set number of questions you want to generate.
-    @NotBlank(message = "number of questions can not be zero.")
+    @Min(value = 1, message = "question count must be greater than 0")
     private int question_count;
 
-    // Set number of line for a short answer.
-    @NotBlank(message = "number of lines in which question can be answered must be defined")
-    private int shortAnswer_lines;
-
-    // set difficulty.
-    @NotBlank(message = "difficulty can not be null")
+    @NotNull(message = "difficulty can not be null")
     private Difficulty difficulty;
 }

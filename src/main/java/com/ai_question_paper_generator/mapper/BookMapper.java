@@ -6,14 +6,15 @@ import com.ai_question_paper_generator.dto.book_dto.BookDtoWithId;
 import com.ai_question_paper_generator.dto.book_dto.BookDtoWithPath;
 import com.ai_question_paper_generator.model.Book;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring", uses = {ChapterMapper.class})
+@Mapper(componentModel = "spring")
 public interface BookMapper {
-    Book dtoToBook(BookDto dto);
-    BookDto bookToDto(Book book);
-    Book basicBookDto(BookDtoBasic bookDtoBasic);
     Book bookDtoWithPathToBook(BookDtoWithPath bookDtoWithPath);
     BookDtoBasic toBookDtoBasic(Book book);
+
+    @Mapping(source = "id", target = "id")
     BookDtoWithId toBookDtoWithId(Book book);
     Book toBook(BookDtoWithId dto);
+
 }

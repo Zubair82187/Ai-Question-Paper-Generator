@@ -25,7 +25,6 @@ public class Book {
     private String path;
 
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "book")
-    private List<Chapter> chapters;
-
+    private List<Chunk> chunks;
 
 }

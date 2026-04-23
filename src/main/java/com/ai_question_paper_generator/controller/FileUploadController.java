@@ -27,15 +27,15 @@ public class FileUploadController {
         return ResponseEntity.status(HttpStatus.OK).body(service.saveFile(pdf, bookDtoBasic));
     }
 
-    @PostMapping(value = "/upload/chapters", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<String> uploadChapters(@RequestPart("chapters") List<MultipartFile> chapters,
-                                                @RequestPart("book") @Validated BookDtoBasic book){
-        return ResponseEntity.status(HttpStatus.OK).body(service.saveChapters(chapters, book));
-    }
+//    @PostMapping(value = "/upload/chapters", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+//    public ResponseEntity<String> uploadChapters(@RequestPart("chapters") List<MultipartFile> chapters,
+//                                                @RequestPart("book") @Validated BookDtoBasic book){
+//        return ResponseEntity.status(HttpStatus.OK).body(service.saveChapters(chapters, book));
+//    }
 
 
-    @PostMapping(value = "/upload/chapter", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<String> saveChapter(@RequestPart("chapter")MultipartFile file, @RequestPart long id){
-        return ResponseEntity.status(HttpStatus.OK).body(service.saveChapter(file, id));
-    }
+//    @PostMapping(value = "/upload/chapter", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+//    public ResponseEntity<String> saveChapter(@RequestPart("chapter")MultipartFile file, @RequestPart long id){
+//        return ResponseEntity.status(HttpStatus.OK).body(service.saveChapter(file, id));
+//    }
 }

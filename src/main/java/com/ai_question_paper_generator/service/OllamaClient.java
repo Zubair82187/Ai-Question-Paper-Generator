@@ -2,19 +2,20 @@ package com.ai_question_paper_generator.service;
 
 import com.ai_question_paper_generator.dto.chunk_dto.ChunkDto;
 import com.ai_question_paper_generator.dto.query_dto.*;
+import com.ai_question_paper_generator.enums.Difficulty;
 import com.ai_question_paper_generator.exception.NoResponseFound;
-import com.ai_question_paper_generator.model.question_generation_inputs.Query;
+import com.ai_question_paper_generator.model.question_generation_inputs.TopicQuery;
 import okhttp3.*;
-import org.springframework.boot.jackson.autoconfigure.JacksonProperties;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Service
 @Profile("ollama")
@@ -72,404 +73,222 @@ public class OllamaClient implements AiClient{
     }
 
     @Override
-    public String generateChapterName(String text) {
-        return "chapter name";
+    public JsonNode shortQuestions(List<ChunkDto> chunks, int questionCount, Difficulty difficulty) {
+        return generateResponse(shortQuestionPrompt(chunks, questionCount, difficulty));
     }
 
     @Override
-    public String generateQuestions(List<ChunkDto> chunks, Query query) {
-        String prompt = prompt(chunks.get(0), query);
-        prompt = prompt.replace("\n", " ").replace("\r", " ");
+    public JsonNode longQuestions(List<ChunkDto> chunks, int questionCount, Difficulty difficulty) {
+        return generateResponse(longQuestionPrompt(chunks, questionCount, difficulty));
+    }
+
+    @Override
+    public JsonNode mcqQuestions(List<ChunkDto> chunks, int questionCount, Difficulty difficulty) {
+        return generateResponse(mcqQuestionPrompt(chunks, questionCount, difficulty));
+    }
+
+    @Override
+    public JsonNode generateQuestions(List<ChunkDto> chunks, BookQueryDto queryDto) {
+        return generateResponse(bookQuestionPrompt(chunks, queryDto));
+    }
+
+    @Override
+    public JsonNode generateKeywords(String chapterName, String subjectName) {
+        String prompt = """
+            Generate exactly 10 unique concise keywords for the chapter "%s" of subject "%s"
+            Output:
+                - Return ONLY raw JSON
+                - No answers, explanations, or extra text
+        """.formatted(chapterName, subjectName);
+
         return generateResponse(prompt);
     }
 
     @Override
-    public String shortQuestions(List<ChunkDto> chunks, ShortQuestionQueryDto queryDto) {
-        return generateResponse(shortQuestionPrompt(chunks, queryDto));
-    }
+    public JsonNode generateKeywords(TopicQuery topicQuery) {
+        String prompt = """
+            Generate exactly 100 unique concise keywords for the topic "%s" of subject "%s"
+            Output:
+                - Return ONLY raw JSON
+                - No answers, explanations, or extra text
+        """.formatted(topicQuery.getTopic(), topicQuery.getSubjectName());
 
-    @Override
-    public String longQuestions(List<ChunkDto> chunks, LongQuestionsQueryDto queryDto) {
-        return generateResponse(longQuestionPrompt(chunks, queryDto));
-    }
-
-    @Override
-    public String mcqQuestions(List<ChunkDto> chunks, McqQuestionsQueryDto queryDto) {
-        return generateResponse(mcqQuestionPrompt(chunks, queryDto));
-    }
-
-    @Override
-    public String shortQuestions(List<ChunkDto> chunks, BookShortQuestionQueryDto queryDto) {
-        return generateResponse(shortQuestionPrompt(chunks, queryDto));
-    }
-
-    @Override
-    public String longQuestions(List<ChunkDto> chunks, BookLongQuestionQueryDto queryDto) {
-        return generateResponse(longQuestionPrompt(chunks, queryDto));
-    }
-
-    @Override
-    public String mcqQuestions(List<ChunkDto> chunks, BookMcqQuestionQueryDto queryDto) {
-        return generateResponse(mcqQuestionPrompt(chunks, queryDto));
-    }
-
-    @Override
-    public String generateQuestions(List<ChunkDto> chunks, BookQueryDto queryDto) {
-        return generateResponse(bookQuestionPrompt(chunks, queryDto));
+        return generateResponse(prompt);
     }
 
 
     // Prompt methods
 
-
+    // This method return a prompt to generate questions of multiple type like mcq, short answer and long answer type questions
     private String bookQuestionPrompt(List<ChunkDto> chunks, BookQueryDto query){
         // Merge all chunks as a single string
         String content = chunks.stream()
                 .map(ChunkDto::getChunk_text)
-                .reduce("", (a, b) -> a + "\n" + b);
+                .collect(Collectors.joining("\n\n"));
 
-        String types_of_questions = """
-                    - %d Multiple Choice Questions (MCQs)
-                    - %d Short Answer Questions
-                    - %d Long Answer Questions
-                """.formatted(query.getNumber_of_mcq(),
-                query.getNumber_of_short_question(),
-                query.getNumber_of_long_question()
-        );
-
-
-        return  """
-                    You are an expert academic question paper generator.
-                    Your task is to generate a complete exam question paper strictly based on the provided content.
-                    INPUT:
-                    Content will be given below.
-                    You must generate:
-                    %s
-                   
-                    RULES:
-                    - Use ONLY the given content.
-                    - Do NOT add external knowledge.
-                    - Do NOT hallucinate facts.
-                    - Ensure questions cover all important parts of the content.
-                    - Avoid repetition.
-                    - Short answer question can be answered in %d lines at least.
-                    - Long answer question can be answered in %d words at least.
-                   
-                    MCQ FORMAT:
-                    Q1. Question
-                    A. Option
-                    B. Option
-                    C. Option
-                    D. Option
-                   
-                    SHORT ANSWER FORMAT:
-                    Q1. Question
-                  
-                    LONG ANSWER FORMAT:
-                    Q1. Question
-                  
-                    CONTENT:
-                    %s
-                  
-                    Generate the question paper now.
-                   """.formatted(
-                types_of_questions,
-                query.getShortAnswer_lines(),
-                query.getLongAnswer_words(),
-                content
-        );
-    }
-
-    private String mcqQuestionPrompt(List<ChunkDto> chunks, BookMcqQuestionQueryDto queryDto){
-        // Merge all chunks as a single string
-        String content = chunks.stream()
-                .map(ChunkDto::getChunk_text)
-                .reduce("", (a, b) -> a + "\n" + b);
-
-        String types_of_questions = """
-                    - %d Multiple Choice Questions (MCQs)
-                    - %s Difficulty
-                """.formatted(queryDto.getQuestion_count(),
-                queryDto.getDifficulty()
-        );
-
-
-        return  """
-                    You are an expert academic question paper generator.
-                    Your task is to generate a complete exam question paper strictly based on the provided content.
-                    INPUT:
-                    Content will be given below.
-                    You must generate:
-                    %s
-                   
-                    RULES:
-                    - Use ONLY the given content.
-                    - Do NOT add external knowledge.
-                    - Do NOT hallucinate facts.
-                    - Ensure questions cover all important parts of the content.
-                    - Avoid repetition.
-                   
-                    MCQ FORMAT:
-                    Q1. Question
-                    A. Option
-                    B. Option
-                    C. Option
-                    D. Option
-                   
-                    CONTENT:
-                    %s
-                  
-                    Generate the question paper now.
-                   """.formatted(
-                types_of_questions,
-                content
-        );
-    }
-
-    private String longQuestionPrompt(List<ChunkDto> chunks, BookLongQuestionQueryDto queryDto){
-        // Merge all chunks as a single string
-        String content = chunks.stream()
-                .map(ChunkDto::getChunk_text)
-                .reduce("", (a, b) -> a + "\n" + b);
-
-        String types_of_questions = """
-                    - %d Long Answer Questions
-                    - %s difficulty
-                """.formatted(queryDto.getQuestion_count(),
-                queryDto.getDifficulty());
+        String rules = """
+                Use ONLY given content. No assumptions.
+                Skip unclear topics.
+                Questions must be clear and exam-ready.
+                MCQs: 4 plausible options from content.
+                Short/Long: test understanding.
+                No repetition.
+                
+                Output ONLY raw JSON. No extra text.
+                """;
 
         return """
-                    You are an expert academic question paper generator.
-                    Your task is to generate a complete exam question paper strictly based on the provided content.
-                    INPUT:
-                    Content will be given below.
-                    You must generate:
-                    %s
-                   
-                    RULES:
-                    - Use ONLY the given content.
-                    - Do NOT add external knowledge.
-                    - Do NOT hallucinate facts.
-                    - Ensure questions cover all important parts of the content.
-                    - Avoid repetition.
-                    - Long answer question can be answered in %d words at least.
-                   
-                    LONG ANSWER FORMAT:
-                    Q1. Question
-                  
-                    CONTENT:
-                    %s
-                  
-                    Generate the question paper now.
-                   """.formatted(
-                types_of_questions,
-                queryDto.getLongAnswer_words(),
-                content
-        );
-    }
-
-    private String shortQuestionPrompt(List<ChunkDto> chunks, BookShortQuestionQueryDto queryDto) {
-        // Merge all chunks as a single string
-        String content = chunks.stream()
-                .map(ChunkDto::getChunk_text)
-                .reduce("", (a, b) -> a + "\n" + b);
-
-        String types_of_questions = """
-                    - %d Short Answer Questions
-                    - %s difficulty
-                """.formatted(queryDto.getQuestion_count(),
-                queryDto.getDifficulty());
-
-        return """
-                    You are an expert academic question paper generator.
-                    Your task is to generate a complete exam question paper strictly based on the provided content.
-                    INPUT:
-                    Content will be given below.
-                    You must generate:
-                    %s
-                   
-                    RULES:
-                    - Use ONLY the given content.
-                    - Do NOT add external knowledge.
-                    - Do NOT hallucinate facts.
-                    - Ensure questions cover all important parts of the content.
-                    - Avoid repetition.
-                    - Short answer question can be answered in %d lines at least.
-                   
-                    SHORT ANSWER FORMAT:
-                    Q1. Question
-                  
-                    CONTENT:
-                    %s
-                  
-                    Generate the question paper now.
-                   """.formatted(
-                types_of_questions,
-                queryDto.getShortAnswer_lines(),
-                content
-        );
-    }
-
-    private String shortQuestionPrompt(List<ChunkDto> chunks, ShortQuestionQueryDto queryDto){
-        // Merge all chunks as a single string
-        String content = chunks.stream()
-                .map(ChunkDto::getChunk_text)
-                .reduce("", (a, b) -> a + "\n" + b);
-
-        String types_of_questions = """
-                    - %d Short Answer Questions
-                    - %s difficulty
-                """.formatted(queryDto.getQuestion_count(),
-                queryDto.getDifficulty());
-
-        return """
-                    You are an expert academic question paper generator.
-                    Your task is to generate a complete exam question paper strictly based on the provided content.
-                    INPUT:
-                    Content will be given below.
-                    You must generate:
-                    %s
-                   
-                    RULES:
-                    - Use ONLY the given content.
-                    - Do NOT add external knowledge.
-                    - Do NOT hallucinate facts.
-                    - Ensure questions cover all important parts of the content.
-                    - Avoid repetition.
-                    - Short answer question can be answered in %d lines at least.
-                   
-                    SHORT ANSWER FORMAT:
-                    Q1. Question
-                  
-                    CONTENT:
-                    %s
-                  
-                    Generate the question paper now.
-                   """.formatted(
-                types_of_questions,
-                queryDto.getShortAnswer_lines(),
-                content
-        );
-    }
-
-    private String prompt(ChunkDto chunk, Query query){
-
-        // Merge all chunks as a single string
-        String content = chunk.getChunk_text();
-
-        String types_of_questions = """
-                    - %d Multiple Choice Questions (MCQs)
-                """.formatted(query.getNumber_of_mcq());
-
-
-        return """
-                You are an exam question generator.
-       
-                Rules:
-                - Generate EXACTLY %d questions
-                - No explanation
-                - Return ONLY valid JSON
-                - No markdown
-       
+                Generate:
+                - %d total questions
+                - %d MCQs (4 options each)
+                - %d short answer
+                - %d long answer
+                Difficulty: %s
+                
+                %s
+                
+                Format:
+                {
+                  "mcq": [],
+                  "short_answer_question": [],
+                  "long_answer_question": []
+                }
+                
                 Content:
                 %s
                 """.formatted(
-                                query.getNumber_of_mcq(),
-                                content
-                        );
+                query.getQuestion_count(),
+                query.getNumber_of_mcq(),
+                query.getNumber_of_short_question(),
+                query.getNumber_of_long_question(),
+                query.getDifficulty(),
+                rules,
+                content
+        );
     }
 
-    private String longQuestionPrompt(List<ChunkDto> chunks, LongQuestionsQueryDto queryDto){
-
+    // This method return a prompt to generate mcq questions
+    private String mcqQuestionPrompt(List<ChunkDto> chunks, int questionCount, Difficulty difficulty){
         // Merge all chunks as a single string
         String content = chunks.stream()
                 .map(ChunkDto::getChunk_text)
-                .reduce("", (a, b) -> a + "\n" + b);
+                .collect(Collectors.joining("\n\n"));
 
-        String types_of_questions = """
-                    - %d Long Answer Questions
-                    - %s difficulty
-                """.formatted(queryDto.getQuestion_count(),
-                queryDto.getDifficulty());
+        String rules = """
+                You are an expert exam question generator.
+                
+                Rules:
+                - Use ONLY the given content (no assumptions or extra info)
+                - Skip unclear or insufficient topics
+                - Questions must be clear, complete, and exam-ready
+                - MCQs must have 4 realistic, plausible options from the content
+                - Do NOT repeat questions
+                
+                Output:
+                - Return ONLY raw JSON
+                - No answers, explanations, or extra text
+                """;
 
         return """
-                    You are an expert academic question paper generator.
-                    Your task is to generate a complete exam question paper strictly based on the provided content.
-                    INPUT:
-                    Content will be given below.
-                    You must generate:
-                    %s
-                   
-                    RULES:
-                    - Use ONLY the given content.
-                    - Do NOT add external knowledge.
-                    - Do NOT hallucinate facts.
-                    - Ensure questions cover all important parts of the content.
-                    - Avoid repetition.
-                    - Long answer question can be answered in %d words at least.
-                   
-                    LONG ANSWER FORMAT:
-                    Q1. Question
-                  
-                    CONTENT:
-                    %s
-                  
-                    Generate the question paper now.
-                   """.formatted(
-                types_of_questions,
-                queryDto.getLongAnswer_words(),
+                You are a teacher creating a question paper.
+                
+                Generate exactly %d MCQs (4 options each)
+                Difficulty: %s
+                
+                %s
+                
+                Format:
+                {
+                  "mcq": []
+                }
+                
+                Content:
+                %s
+                """.formatted(
+                questionCount,
+                difficulty,
+                rules,
                 content
         );
     }
 
-    private String mcqQuestionPrompt(List<ChunkDto> chunks, McqQuestionsQueryDto queryDto){
-
+    // This method return a prompt to generate long answer questions
+    private String longQuestionPrompt(List<ChunkDto> chunks, int questionCount, Difficulty difficulty){
         // Merge all chunks as a single string
         String content = chunks.stream()
                 .map(ChunkDto::getChunk_text)
-                .reduce("", (a, b) -> a + "\n" + b);
+                .collect(Collectors.joining("\n\n"));
 
-        String types_of_questions = """
-                    - %d Multiple Choice Questions (MCQs)
-                    - %s Difficulty
-                """.formatted(queryDto.getQuestion_count(),
-                queryDto.getDifficulty()
-        );
+        String rules = """
+                Use ONLY given content. No assumptions or extra info.
+                Skip unclear topics.
+                Questions must be clear, complete, and exam-oriented.
+                Long answers should test understanding, not memorization.
+                Do not repeat questions.
+                
+                Output ONLY raw JSON. No answers, explanations, or extra text.
+                """;
 
-
-        return  """
-                    You are an expert academic question paper generator.
-                    Your task is to generate a complete exam question paper strictly based on the provided content.
-                    INPUT:
-                    Content will be given below.
-                    You must generate:
-                    %s
-                   
-                    RULES:
-                    - Use ONLY the given content.
-                    - Do NOT add external knowledge.
-                    - Do NOT hallucinate facts.
-                    - Ensure questions cover all important parts of the content.
-                    - Avoid repetition.
-                   
-                    MCQ FORMAT:
-                    Q1. Question
-                    A. Option
-                    B. Option
-                    C. Option
-                    D. Option
-                   
-                    CONTENT:
-                    %s
-                  
-                    Generate the question paper now.
-                   """.formatted(
-                types_of_questions,
+        return """
+                Generate exactly %d long answer questions
+                Difficulty: %s
+                
+                %s
+                
+                Format:
+                {
+                  "long_answer_type_questions": []
+                }
+                
+                Content:
+                %s
+                """.formatted(
+                questionCount,
+                difficulty,
+                rules,
                 content
         );
     }
 
-    private String generateResponse(String prompt){
+    // This method return a prompt to generate short answer questions
+    private String shortQuestionPrompt(List<ChunkDto> chunks, int questionCount, Difficulty difficulty) {
+        // Merge all chunks as a single string
+        String content = chunks.stream()
+                .map(ChunkDto::getChunk_text)
+                .collect(Collectors.joining("\n\n"));
+
+        String rules = """
+                Use ONLY given content. No assumptions.
+                Skip unclear topics.
+                Questions must be clear, complete, and test understanding.
+                Do not repeat.
+                
+                Output ONLY raw JSON. No extra text.
+                """;
+
+        return """
+                Generate exactly %d short answer questions
+                Difficulty: %s
+                
+                %s
+                
+                Format:
+                {
+                  "short_answer_type_questions": []
+                }
+                
+                Content:
+                %s
+                """.formatted(
+                questionCount,
+                difficulty,
+                rules,
+                content
+        );
+    }
+
+    // this return a jsonNode that contain generate questions
+    private JsonNode generateResponse(String prompt){
         OkHttpClient client = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(300, TimeUnit.SECONDS)
@@ -481,9 +300,8 @@ public class OllamaClient implements AiClient{
 
         try {
             Map<String, Object> requestMap = new HashMap<>();
-            requestMap.put("model", "llama3.1:8b");
+            requestMap.put("model", "llama3.2:3b");
             requestMap.put("prompt", prompt);
-            requestMap.put("format", "json");
             requestMap.put("stream", false);
 
             body = mapper.writeValueAsString(requestMap);
@@ -504,7 +322,19 @@ public class OllamaClient implements AiClient{
         try (Response response = client.newCall(request).execute()) {
 
             if(response.body() != null){
-                return response.body().string();
+
+
+                // remove ollama wrapper
+                String rawResponse = response.body().string();
+
+                JsonNode root = mapper.readTree(rawResponse);
+                String llmResponse = root.get("response").asString();
+
+                // extract JSON block
+                String cleaned = extractJson(llmResponse);
+
+                // parse string to jsonNode
+                return mapper.readTree(cleaned);
             }
             else{
                 throw new NoResponseFound("response body is null");
@@ -512,5 +342,54 @@ public class OllamaClient implements AiClient{
         } catch (Exception e) {
             throw new NoResponseFound("IO Exception while calling model API: " + e.getMessage()+" "+ e);
         }
+    }
+
+    // helper method to extract response from llm response
+    private String extractJson(String llmResponse) {
+        int objStart = llmResponse.indexOf("{");
+        int objEnd = llmResponse.lastIndexOf("}");
+
+        int arrStart = llmResponse.indexOf("[");
+        int arrEnd = llmResponse.lastIndexOf("]");
+
+        // Case 1: JSON Object
+        if (objStart != -1 && objEnd != -1) {
+            return llmResponse.substring(objStart, objEnd + 1);
+        }
+
+        // Case 2: JSON Array
+        if (arrStart != -1 && arrEnd != -1) {
+            return llmResponse.substring(arrStart, arrEnd + 1);
+        }
+        throw new RuntimeException("No JSON found in LLM response");
+    }
+
+    // Json validation
+    private boolean isValid(JsonNode node) {
+        if (node == null || !node.isArray()) return false;
+
+        for (JsonNode item : node) {
+            if (!item.has("title") || !item.has("description")) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public JsonNode generateWithRetry(String prompt) {
+        int maxRetries = 3;
+
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            JsonNode result = generateResponse(prompt);
+
+            if (isValid(result)) {
+                return result;
+            }
+
+            // strengthen instruction on retry
+            prompt += "\n\nIMPORTANT: Return ONLY valid JSON. No text.";
+        }
+
+        throw new RuntimeException("Failed after " + maxRetries + " attempts");
     }
 }

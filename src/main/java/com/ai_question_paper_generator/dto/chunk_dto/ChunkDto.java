@@ -1,6 +1,6 @@
 package com.ai_question_paper_generator.dto.chunk_dto;
 
-import com.ai_question_paper_generator.dto.chapter_dto.ChapterDtoBasic;
+import com.ai_question_paper_generator.dto.book_dto.BookDtoWithId;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -19,6 +19,5 @@ public class ChunkDto {
     @NotBlank
     private List<Double> embedding;
 
-    @NotBlank
-    private ChapterDtoBasic chapter;
+    private BookDtoWithId  bookDtoWithId;
 }

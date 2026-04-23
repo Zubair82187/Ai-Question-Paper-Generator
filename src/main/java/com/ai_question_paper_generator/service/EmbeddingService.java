@@ -1,7 +1,6 @@
 package com.ai_question_paper_generator.service;
 
 import okhttp3.*;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
