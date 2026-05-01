@@ -6,6 +6,7 @@ import com.ai_question_paper_generator.enums.Difficulty;
 import com.ai_question_paper_generator.exception.NoResponseFound;
 import com.ai_question_paper_generator.model.question_generation_inputs.TopicQuery;
 import okhttp3.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
@@ -19,11 +20,17 @@ import java.util.stream.Collectors;
 
 @Service
 @Profile("ollama")
-
 public class OllamaClient implements AiClient{
 
     private static final String OLLAMA_URL =
             "http://localhost:11434/api/generate";
+
+    @Value("${groq.api.key}")
+    private String groqApiKey;
+
+    @Value("${groq.api.url}")
+    private String groqApiUrl;
+
 
 
     //This is s test method to test about our ollama is working or not. I have to delete it.
@@ -109,7 +116,7 @@ public class OllamaClient implements AiClient{
         String prompt = """
             Generate exactly 100 unique concise keywords for the topic "%s" of subject "%s"
             Output:
-                - Return ONLY raw JSON
+                - Return ONLY valid JSON object
                 - No answers, explanations, or extra text
         """.formatted(topicQuery.getTopic(), topicQuery.getSubjectName());
 
@@ -299,10 +306,20 @@ public class OllamaClient implements AiClient{
         ObjectMapper mapper = new ObjectMapper();
 
         try {
+
+            Map<String, Object> systemMessage = new HashMap<>();
+            systemMessage.put("role", "system");
+            systemMessage.put("content", "You are a JSON API. Return only raw JSON, nothing else. No markdown, no backticks, no explanation.");
+
+            Map<String, Object> userMessage = new HashMap<>();
+            userMessage.put("role", "user");
+            userMessage.put("content", prompt);
+
             Map<String, Object> requestMap = new HashMap<>();
-            requestMap.put("model", "llama3.2:3b");
-            requestMap.put("prompt", prompt);
-            requestMap.put("stream", false);
+            requestMap.put("model", "llama-3.3-70b-versatile");
+            requestMap.put("messages", List.of(systemMessage, userMessage));
+            requestMap.put("temperature", 0.7);
+            requestMap.put("max_tokens", 1000);
 
             body = mapper.writeValueAsString(requestMap);
 
@@ -312,7 +329,9 @@ public class OllamaClient implements AiClient{
 
         // Make an api request
         Request request = new Request.Builder()
-                .url(OLLAMA_URL)
+                .url(groqApiUrl)
+                .addHeader("Authorization", "Bearer " + groqApiKey)
+                .addHeader("Content-Type", "application/json")
                 .post(RequestBody.create(
                         body,
                         MediaType.parse("application/json")))
@@ -327,12 +346,28 @@ public class OllamaClient implements AiClient{
                 // remove ollama wrapper
                 String rawResponse = response.body().string();
 
+
                 JsonNode root = mapper.readTree(rawResponse);
-                String llmResponse = root.get("response").asString();
+                // check for groq api error
+                if(root.has("error")){
+                    throw new RuntimeException("Groq API error: " + root.get("error").get("message").asString());
+                }
+
+                JsonNode responseNode = root.get("choices")
+                        .get(0)
+                        .get("message")
+                        .get("content");
+
+                if (responseNode == null || responseNode.isNull()) {
+                    throw new RuntimeException("Missing 'response' field: " + rawResponse);
+                }
+
+                String llmResponse = responseNode.asString();
 
                 // extract JSON block
                 String cleaned = extractJson(llmResponse);
 
+                cleaned = fixLlmJsonArray(cleaned);
                 // parse string to jsonNode
                 return mapper.readTree(cleaned);
             }
@@ -392,4 +427,17 @@ public class OllamaClient implements AiClient{
 
         throw new RuntimeException("Failed after " + maxRetries + " attempts");
     }
+
+    private String fixLlmJsonArray(String raw) {
+        String trimmed = raw.trim();
+
+        // If it looks like {"a", "b"} instead of ["a", "b"]
+        if (trimmed.startsWith("{") && !trimmed.contains(":")) {
+            // Replace curly braces with square brackets
+            trimmed = "[" + trimmed.substring(1, trimmed.length() - 1) + "]";
+        }
+
+        return trimmed;
+    }
+
 }

@@ -1,0 +1,10 @@
+[33m4d8df66[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m Implemented features: generate mcq, short and long questions from chapter and by topic and also removed boilerplate code from ollama client class. Improved the json extraction response
+[33m6fa9b99[m Splitting book into chapters and chunking those chapters now improved
+[33mb379c08[m Implemented question generation from book now you can generate questions from a whole book. you can generate mcq, short, long and all three types of questions from a whole book.
+[33m980a949[m Implemented qustions generation feature now we can generate MCQ questions, short answer questions and long answer questions.
+[33m3fb2401[m Implemented two APIs for questions genertion
+[33m52a2393[m Generated embeddings of chunks and stored them into database.
+[33m1cdc625[m upload chapter api fixed and improved performance and better error response with clear message.
+[33m8bcb945[m book upload api fixed. chapter not saving book id fixed.
+[33md307bcd[m removed uploads directory from git
+[33m9118b51[m ocr implemented and files stored in file system

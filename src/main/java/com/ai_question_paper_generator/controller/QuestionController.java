@@ -1,6 +1,5 @@
 package com.ai_question_paper_generator.controller;
 
-import com.ai_question_paper_generator.dto.QuestionRequest;
 import com.ai_question_paper_generator.dto.query_dto.*;
 import com.ai_question_paper_generator.model.question_generation_inputs.ChapterQuery;
 import com.ai_question_paper_generator.model.question_generation_inputs.TopicQuery;
@@ -17,12 +16,6 @@ import tools.jackson.databind.JsonNode;
 public class QuestionController {
 
     private final QuestionService service;
-
-
-    @PostMapping("/generate")
-    public String generate(@RequestBody QuestionRequest req) {
-        return service.generateQuestions(req.getTopic(), req.getText());
-    }
 
     @PostMapping("/generate_all_type")
     public ResponseEntity<JsonNode> generateFromBook(@RequestBody BookQueryDto queryDto){
@@ -65,12 +58,12 @@ public class QuestionController {
         return ResponseEntity.status(HttpStatus.OK).body(service.generateMcqFromTopic(topicQuery));
     }
 
-    @PostMapping("/generate_mcq_from_topic")
+    @PostMapping("/generate_short_from_topic")
     public ResponseEntity<JsonNode> generateShortFromTopic(@RequestBody TopicQuery topicQuery){
         return ResponseEntity.status(HttpStatus.OK).body(service.generateShortFromTopic(topicQuery));
     }
 
-    @PostMapping("/generate_mcq_from_topic")
+    @PostMapping("/generate_long_from_topic")
     public ResponseEntity<JsonNode> generateLongFromTopic(@RequestBody TopicQuery topicQuery){
         return ResponseEntity.status(HttpStatus.OK).body(service.generateLongFromTopic(topicQuery));
     }

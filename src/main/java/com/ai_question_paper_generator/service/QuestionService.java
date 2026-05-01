@@ -8,7 +8,6 @@ import com.ai_question_paper_generator.model.question_generation_inputs.TopicQue
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -21,42 +20,6 @@ public class QuestionService {
     private final AiClient aiClient;
     private final ChunkService chunkService;
     private final EmbeddingService embeddingService;
-
-    public String generateQuestions(String topic, String text) {
-
-        String prompt = """
-        You are an exam question generator.
-
-        Rules:
-        - Generate EXACTLY 6 questions
-        - No explanation
-        - Return ONLY valid JSON
-        - No markdown
-
-        Topic: %s
-
-        Content:
-        %s
-        """.formatted(topic, text);
-
-        String fullResponseString = aiClient.generate(prompt);
-
-        /*
-         Converting JSON string into jsonNode tree
-         so that we can extract what we want from response
-         as of now response string contains a lot of things like response model and others,
-         but here we need only response.
-        */
-        ObjectMapper mapper = new ObjectMapper();
-
-        JsonNode root = mapper.readTree(fullResponseString);
-        String responseText = root.get("response").asString();
-        responseText = responseText.replace("```", "").trim();
-
-        return responseText;
-
-    }
-
 
 
     public JsonNode generateFromBook(BookQueryDto queryDto){
@@ -159,9 +122,14 @@ public class QuestionService {
         JsonNode response= aiClient.generateKeywords(chapterQuery.getChapterName(), chapterQuery.getSubjectName());
         StringBuilder keyword = new StringBuilder();
 
-        for(int i=0; i< response.size(); i++){
-            keyword.append(response.get(i).asString().replace("\"", "")).append(" ");
+        JsonNode keywordsArray = response.get("keywords");
+
+        if (keywordsArray != null && keywordsArray.isArray()) {
+            for (int i = 0; i < keywordsArray.size(); i++) {
+                keyword.append(keywordsArray.get(i).asString()).append(" ");
+            }
         }
+
         List<Double> keywordEmbeddings = embeddingService.generateEmbedding(keyword.toString());
         List<ChunkDto> chunks = chunkService.findChunkEmbeddingsByBookId(chapterQuery.getBook_id());
         List<ChunkDto> chapterChunks = new ArrayList<>();

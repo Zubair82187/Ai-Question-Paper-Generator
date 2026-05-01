@@ -1,6 +1,7 @@
 package com.ai_question_paper_generator.service;
 
 import okhttp3.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -12,6 +13,12 @@ import java.util.concurrent.TimeUnit;
 
 @Service
 public class EmbeddingService {
+
+    @Value("${gemini.api.key}")
+    private String geminiApiKey;
+
+    @Value("${gemini.embedding.url}")
+    private String geminiEmbeddingUrl;
 
     public List<Double> generateEmbedding(String text) {
 
@@ -27,15 +34,28 @@ public class EmbeddingService {
 
         ObjectMapper mapper = new ObjectMapper();
 
+        ObjectNode contentNode = mapper.createObjectNode();
+        contentNode.put("text", text);
+
+        ObjectNode partsNode = mapper.createObjectNode();
+        partsNode.set("parts", mapper.createArrayNode().add(contentNode));
+
         ObjectNode json = mapper.createObjectNode();
-        json.put("model", "nomic-embed-text");
-        json.put("prompt", text);
+        json.set("content", partsNode);
 
-        String body = mapper.writeValueAsString(json);
+        String body;
 
+        try {
+            body = mapper.writeValueAsString(json);
+        } catch (Exception e) {
+            throw new RuntimeException("Error creating request body", e);
+        }
+
+        String url = geminiEmbeddingUrl + "?key=" + geminiApiKey;
 
         Request request = new Request.Builder()
-                .url("http://localhost:11434/api/embeddings")
+                .url(url)
+                .addHeader("Content-Type", "application/json")
                 .post(RequestBody.create(
                         body,
                         MediaType.parse("application/json")))
@@ -43,10 +63,20 @@ public class EmbeddingService {
 
         try (Response response = client.newCall(request).execute()) {
 
-            String responseBody = response.body().string();
+            String responseBody = null;
+            if (response.body() != null) {
+                responseBody = response.body().string();
+            }
             JsonNode jsonNode = mapper.readTree(responseBody);
 
-            JsonNode embeddingNode = jsonNode.get("embedding");
+            if (jsonNode.has("error")) {
+                throw new RuntimeException("Gemini API error: " +
+                        jsonNode.get("error").get("message").asString());
+            }
+
+            JsonNode embeddingNode = jsonNode
+                    .get("embedding")
+                    .get("values");
 
             if (embeddingNode == null || !embeddingNode.isArray()) {
                 throw new RuntimeException("Invalid embedding response: " + responseBody);
