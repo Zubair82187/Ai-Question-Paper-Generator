@@ -114,7 +114,7 @@ public class OllamaClient implements AiClient{
     @Override
     public JsonNode generateKeywords(TopicQuery topicQuery) {
         String prompt = """
-            Generate exactly 100 unique concise keywords for the topic "%s" of subject "%s"
+            Generate exactly 20 unique concise keywords for the topic "%s" of subject "%s"
             Output:
                 - Return ONLY valid JSON object
                 - No answers, explanations, or extra text
@@ -346,7 +346,6 @@ public class OllamaClient implements AiClient{
                 // remove ollama wrapper
                 String rawResponse = response.body().string();
 
-
                 JsonNode root = mapper.readTree(rawResponse);
                 // check for groq api error
                 if(root.has("error")){
@@ -409,23 +408,6 @@ public class OllamaClient implements AiClient{
             }
         }
         return true;
-    }
-
-    public JsonNode generateWithRetry(String prompt) {
-        int maxRetries = 3;
-
-        for (int attempt = 1; attempt <= maxRetries; attempt++) {
-            JsonNode result = generateResponse(prompt);
-
-            if (isValid(result)) {
-                return result;
-            }
-
-            // strengthen instruction on retry
-            prompt += "\n\nIMPORTANT: Return ONLY valid JSON. No text.";
-        }
-
-        throw new RuntimeException("Failed after " + maxRetries + " attempts");
     }
 
     private String fixLlmJsonArray(String raw) {

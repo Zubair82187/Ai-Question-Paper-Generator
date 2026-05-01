@@ -12,6 +12,7 @@ import tools.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.StringJoiner;
 
 @Service
 @AllArgsConstructor
@@ -63,7 +64,6 @@ public class QuestionService {
     public JsonNode generateMcqFromChapter(ChapterQuery chapterQuery){
 
         List<ChunkDto> chunks = findChapterChunks(chapterQuery);
-
         if(chunks.isEmpty()){
             throw new NotFoundException("There is no chapter "+ chapterQuery.getChapterName());
         }
@@ -92,7 +92,7 @@ public class QuestionService {
 
     public JsonNode generateMcqFromTopic(TopicQuery topicQuery){
         List<ChunkDto> chunks = findTopicChunks(topicQuery);
-
+        System.out.println(chunks.size());
         if(chunks.isEmpty()){
             throw new NotFoundException("There is no topic found");
         }
@@ -120,22 +120,22 @@ public class QuestionService {
 
     private List<ChunkDto> findChapterChunks(ChapterQuery chapterQuery){
         JsonNode response= aiClient.generateKeywords(chapterQuery.getChapterName(), chapterQuery.getSubjectName());
-        StringBuilder keyword = new StringBuilder();
-
         JsonNode keywordsArray = response.get("keywords");
 
+        StringJoiner joiner = new StringJoiner(", ");
         if (keywordsArray != null && keywordsArray.isArray()) {
-            for (int i = 0; i < keywordsArray.size(); i++) {
-                keyword.append(keywordsArray.get(i).asString()).append(" ");
+            for (JsonNode keyword : keywordsArray) {
+                joiner.add(keyword.asString());
             }
         }
 
-        List<Double> keywordEmbeddings = embeddingService.generateEmbedding(keyword.toString());
+        String keywordString = joiner.toString();
+        List<Double> keywordEmbeddings = embeddingService.generateEmbedding(keywordString);
         List<ChunkDto> chunks = chunkService.findChunkEmbeddingsByBookId(chapterQuery.getBook_id());
         List<ChunkDto> chapterChunks = new ArrayList<>();
         for (ChunkDto chunk : chunks) {
             double similarity = consine(keywordEmbeddings, chunk.getEmbedding());
-            if (similarity > 7.0) {
+            if (similarity > 0.5) {
                 chapterChunks.add(chunk);
             }
         }
@@ -144,17 +144,23 @@ public class QuestionService {
 
     private List<ChunkDto> findTopicChunks(TopicQuery topicQuery){
         JsonNode response= aiClient.generateKeywords(topicQuery);
-        StringBuilder keyword = new StringBuilder();
+        JsonNode keywordsArray = response.get("keywords");
 
-        for(int i=0; i< response.size(); i++){
-            keyword.append(response.get(i).asString().replace("\"", "")).append(" ");
+        StringJoiner joiner = new StringJoiner(", ");
+        if (keywordsArray != null && keywordsArray.isArray()) {
+            for (JsonNode keyword : keywordsArray) {
+                joiner.add(keyword.asString());
+            }
         }
-        List<Double> keywordEmbeddings = embeddingService.generateEmbedding(keyword.toString());
+
+        String keywordString = joiner.toString();
+
+        List<Double> keywordEmbeddings = embeddingService.generateEmbedding(keywordString);
         List<ChunkDto> chunks = chunkService.findChunkEmbeddingsByBookId(topicQuery.getBook_id());
         List<ChunkDto> chapterChunks = new ArrayList<>();
         for (ChunkDto chunk : chunks) {
             double similarity = consine(keywordEmbeddings, chunk.getEmbedding());
-            if (similarity > 7.0) {
+            if (similarity > 0.1) {
                 chapterChunks.add(chunk);
             }
         }

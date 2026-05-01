@@ -22,7 +22,6 @@ public class Book {
 
     private String bookName;
     private String subject;
-    private String path;
 
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "book")
     private List<Chunk> chunks;

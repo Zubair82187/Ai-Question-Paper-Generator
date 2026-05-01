@@ -2,7 +2,6 @@ package com.ai_question_paper_generator.service;
 
 import com.ai_question_paper_generator.dto.book_dto.BookDtoBasic;
 import com.ai_question_paper_generator.dto.book_dto.BookDtoWithId;
-import com.ai_question_paper_generator.dto.book_dto.BookDtoWithPath;
 import com.ai_question_paper_generator.exception.FileNotSavedException;
 import com.ai_question_paper_generator.exception.NotFoundException;
 import com.ai_question_paper_generator.mapper.BookMapper;
@@ -17,10 +16,10 @@ public class BookService {
     private final BookRepository bookRepository;
     private final BookMapper bookMapper;
 
-    public BookDtoWithId saveBook(BookDtoWithPath bookDtoWithPath){
+    public BookDtoWithId saveBook(BookDtoBasic bookDtoBasic){
 
         try{
-            return bookMapper.toBookDtoWithId(bookRepository.save(bookMapper.bookDtoWithPathToBook(bookDtoWithPath)));
+            return bookMapper.toBookDtoWithId(bookRepository.save(bookMapper.toBookFromBookDtoBasic(bookDtoBasic)));
         } catch (Exception e) {
             throw new FileNotSavedException("file could not saved.");
         }
