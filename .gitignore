@@ -7,6 +7,7 @@ target/
 uploads/
 /ChapterController.java
 /ChunkController.java
+.env
 
 ### STS ###
 .apt_generated

@@ -26,4 +26,8 @@ public class Book {
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "book")
     private List<Chunk> chunks;
 
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
 }

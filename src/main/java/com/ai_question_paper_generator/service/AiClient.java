@@ -12,7 +12,6 @@ import tools.jackson.databind.JsonNode;
 import java.util.List;
 
 public interface AiClient {
-    String generate(String prompt);
 
     JsonNode shortQuestions(List<ChunkDto> chunks, int questionCount, Difficulty difficulty);
 

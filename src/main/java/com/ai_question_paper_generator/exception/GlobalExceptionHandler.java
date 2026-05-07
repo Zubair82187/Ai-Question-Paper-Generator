@@ -66,7 +66,7 @@ public class GlobalExceptionHandler{
         return responseEntity(HttpStatus.INTERNAL_SERVER_ERROR, ex);
     }
 
-    @ExceptionHandler
+    @ExceptionHandler(NoResponseFound.class)
     public ResponseEntity<Object> NoResponseFound(NoResponseFound ex){
         return responseEntity(HttpStatus.NOT_FOUND, ex);
     }

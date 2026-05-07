@@ -33,7 +33,7 @@ public class FileUploadService {
 
         // Save book metadata
         BookDtoWithId bookDtoWithId = bookService.saveBook(
-                new BookDtoBasic(book.getBookName(), book.getSubject())
+                new BookDtoBasic(book.getUserId(), book.getBookName(), book.getSubject())
         );
 
         chunkService.chunkBook(cleanedText, bookDtoWithId);

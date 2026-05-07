@@ -22,81 +22,30 @@ import java.util.stream.Collectors;
 @Profile("ollama")
 public class OllamaClient implements AiClient{
 
-    private static final String OLLAMA_URL =
-            "http://localhost:11434/api/generate";
-
     @Value("${groq.api.key}")
     private String groqApiKey;
 
     @Value("${groq.api.url}")
     private String groqApiUrl;
 
-
-
-    //This is s test method to test about our ollama is working or not. I have to delete it.
-    @Override
-    public String generate(String prompt) {
-        OkHttpClient client = new OkHttpClient.Builder()
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(120, TimeUnit.SECONDS)
-                .writeTimeout(30, TimeUnit.SECONDS)
-                .build();
-
-
-        prompt = prompt.replace("\n", " ").replace("\r", " ");
-
-
-
-        // Define request body for ollama
-        String body = """
-                        {
-                          "model": "llama3.1:8b",
-                          "prompt": "%s",
-                          "stream": false
-                        }
-                        """.formatted(prompt);
-
-
-        // Make api request
-        Request request = new Request.Builder()
-                .url(OLLAMA_URL)
-                .post(RequestBody.create(
-                        body,
-                        MediaType.parse("application/json")))
-                .build();
-
-        // Handling response
-        try (Response response = client.newCall(request).execute()) {
-
-            if(response.body() != null){
-                return response.body().string();
-            }
-            else{
-                throw new NoResponseFound("response body is null");
-            }
-        } catch (Exception e) {
-            throw new NoResponseFound("IO Exception while calling model API: " + e.getMessage()+" "+ e);
-        }
-    }
-
     @Override
     public JsonNode shortQuestions(List<ChunkDto> chunks, int questionCount, Difficulty difficulty) {
-        return generateResponse(shortQuestionPrompt(chunks, questionCount, difficulty));
+        return generateResponse(shortQuestionPrompt(chunks, questionCount, difficulty), 0.7f);
     }
 
     @Override
     public JsonNode longQuestions(List<ChunkDto> chunks, int questionCount, Difficulty difficulty) {
-        return generateResponse(longQuestionPrompt(chunks, questionCount, difficulty));
+        return generateResponse(longQuestionPrompt(chunks, questionCount, difficulty), 0.7f);
     }
 
     @Override
     public JsonNode mcqQuestions(List<ChunkDto> chunks, int questionCount, Difficulty difficulty) {
-        return generateResponse(mcqQuestionPrompt(chunks, questionCount, difficulty));
+        return generateResponse(mcqQuestionPrompt(chunks, questionCount, difficulty), 0.7f);
     }
 
     @Override
     public JsonNode generateQuestions(List<ChunkDto> chunks, BookQueryDto queryDto) {
-        return generateResponse(bookQuestionPrompt(chunks, queryDto));
+        return generateResponse(bookQuestionPrompt(chunks, queryDto), 0.7f);
     }
 
     @Override
@@ -108,7 +57,7 @@ public class OllamaClient implements AiClient{
                 - No answers, explanations, or extra text
         """.formatted(chapterName, subjectName);
 
-        return generateResponse(prompt);
+        return generateResponse(prompt, 0.0f);
     }
 
     @Override
@@ -120,7 +69,7 @@ public class OllamaClient implements AiClient{
                 - No answers, explanations, or extra text
         """.formatted(topicQuery.getTopic(), topicQuery.getSubjectName());
 
-        return generateResponse(prompt);
+        return generateResponse(prompt, 0.0f);
     }
 
 
@@ -295,7 +244,7 @@ public class OllamaClient implements AiClient{
     }
 
     // this return a jsonNode that contain generate questions
-    private JsonNode generateResponse(String prompt){
+    private JsonNode generateResponse(String prompt, float temperature){
         OkHttpClient client = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(300, TimeUnit.SECONDS)
@@ -318,7 +267,7 @@ public class OllamaClient implements AiClient{
             Map<String, Object> requestMap = new HashMap<>();
             requestMap.put("model", "llama-3.3-70b-versatile");
             requestMap.put("messages", List.of(systemMessage, userMessage));
-            requestMap.put("temperature", 0.7);
+            requestMap.put("temperature", temperature);
             requestMap.put("max_tokens", 1000);
 
             body = mapper.writeValueAsString(requestMap);
@@ -396,18 +345,6 @@ public class OllamaClient implements AiClient{
             return llmResponse.substring(arrStart, arrEnd + 1);
         }
         throw new RuntimeException("No JSON found in LLM response");
-    }
-
-    // Json validation
-    private boolean isValid(JsonNode node) {
-        if (node == null || !node.isArray()) return false;
-
-        for (JsonNode item : node) {
-            if (!item.has("title") || !item.has("description")) {
-                return false;
-            }
-        }
-        return true;
     }
 
     private String fixLlmJsonArray(String raw) {

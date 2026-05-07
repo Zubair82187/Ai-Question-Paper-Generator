@@ -135,7 +135,8 @@ public class QuestionService {
         List<ChunkDto> chapterChunks = new ArrayList<>();
         for (ChunkDto chunk : chunks) {
             double similarity = consine(keywordEmbeddings, chunk.getEmbedding());
-            if (similarity > 0.5) {
+            if (similarity >= 0.5) {
+                System.out.println("similarity of chapter "+similarity);
                 chapterChunks.add(chunk);
             }
         }
@@ -160,7 +161,7 @@ public class QuestionService {
         List<ChunkDto> chapterChunks = new ArrayList<>();
         for (ChunkDto chunk : chunks) {
             double similarity = consine(keywordEmbeddings, chunk.getEmbedding());
-            if (similarity > 0.1) {
+            if (similarity >= 0.5) {
                 chapterChunks.add(chunk);
             }
         }
