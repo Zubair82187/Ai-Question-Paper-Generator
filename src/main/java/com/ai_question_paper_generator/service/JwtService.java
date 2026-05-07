@@ -43,7 +43,7 @@ public class JwtService {
             return false;
         }
     }
-
+                                                                                                                                                                                                                                                                                                                                        //This is developed by  Mohammad Zubair (zubair82187@gmail.com)
     public String extractEmail(String token){
         return getClaims(token).getSubject();
     }
